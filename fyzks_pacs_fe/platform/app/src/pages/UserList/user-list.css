@@ -1,0 +1,32 @@
+/* Form row layout */
+.edit-user-modal__form-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  /* Individual form items */
+  .edit-user-modal__form-item {
+    flex: 1 1 30%;
+    min-width: 200px;
+  }
+  
+  /* Optional: form label tweaks */
+  .edit-user-modal__form .ant-form-item-label > label {
+    font-weight: 500;
+    color: #333;
+  }
+  .edit-user-modal {
+    top: 80px; /* Push it a bit down from the top */
+  }
+  
+  .edit-user-modal .ant-modal-body {
+    overflow-y: auto;
+    height: 50vh;
+  }
+  
+  /* Table header cell padding */
+  .user-list-table .ant-table-thead > tr > th {
+    padding: 12px 8px !important;
+  }
+  

@@ -1,0 +1,33 @@
+.nodes-list-table .ant-table-thead > tr > th {
+  padding: 12px 8px !important;
+}
+
+.nodes-list-table .ant-table-tbody > tr > td {
+  padding: 4px 8px !important;
+}
+
+/* Form row layout */
+.edit-node-modal__form-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Individual form items */
+.edit-node-modal__form-item {
+  flex: 1 1 30%;
+  min-width: 200px;
+}
+
+/* Optional: form label tweaks */
+.edit-node-modal__form .ant-form-item-label > label {
+  font-weight: 500;
+  color: #333;
+}
+.edit-node-modal {
+  top: 80px; /* Push it a bit down from the top */
+}
+.edit-node-modal .ant-modal-body {
+  overflow-y: auto;
+  height: 50vh !important;
+}

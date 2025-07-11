@@ -1,0 +1,83 @@
+{
+  "name": "dicomweb-pacs",
+  "version": "1.5.1",
+  "description": "A self contained easy to use PACS with DICOMWEB and DIMSE service support",
+  "main": "app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "import": "node src/storescu.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/knopkem/dicomweb-pacs.git"
+  },
+  "keywords": [
+    "DICOMWEB",
+    "PACS",
+    "ARCHIVE",
+    "DIMSE",
+    "DICOM",
+    "STORE",
+    "MOVE",
+    "GET",
+    "FIND",
+    "SCP",
+    "SCU",
+    "OHIF",
+    "VIEWER",
+    "ORTHANC",
+    "DCMTK",
+    "DCM4CHEE",
+    "PACSONE",
+    "CONQUEST"
+  ],
+  "author": "Michael Knopke",
+  "license": "MIT",
+  "bin": {
+    "dicomweb-pacs": "bin/dicomweb-pacs"
+  },
+  "bugs": {
+    "url": "https://github.com/knopkem/dicomweb-pacs/issues"
+  },
+  "homepage": "https://github.com/knopkem/dicomweb-pacs#readme",
+  "dependencies": {
+    "@fastify/autoload": "^5.8.0",
+    "@fastify/cors": "^8.4.1",
+    "@fastify/helmet": "^11.1.1",
+    "@fastify/multipart": "^7.0.0",
+    "@fastify/sensible": "^5.5.0",
+    "@fastify/static": "^6.12.0",
+    "@iwharris/dicom-data-dictionary": "^1.26.0",
+    "blob-to-buffer": "^1.2.9",
+    "chokidar": "^4.0.1",
+    "config": "^3.3.9",
+    "dicom-data-dictionary": "^0.3.1",
+    "dicom-dimse-native": "^2.4.6",
+    "dicom-parser": "^1.8.21",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "fs-walk": "^0.0.2",
+    "html-docx-js": "^0.3.1",
+    "html-pdf-node": "^1.0.8",
+    "http": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
+    "node-cron": "^3.0.3",
+    "pg": "^8.11.5",
+    "pg-hstore": "^2.3.4",
+    "pm2": "^5.4.3",
+    "sequelize": "^6.37.3",
+    "sequelize-auto": "^0.8.8",
+    "shelljs": "^0.8.5",
+    "simple-hl7": "^3.2.4",
+    "simple-node-logger": "^21.8.12"
+  },
+  "devDependencies": {
+    "eslint": "^8.54.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "prettier": "^3.1.0"
+  }
+}

@@ -1,0 +1,23 @@
+.ant-table-cell {
+  line-height: 1 !important;
+  padding: 0.25rem 0.5rem !important;
+  border-right: 1px solid #d3d3d3c2;
+}
+
+.ant-picker-range {
+  padding-left: 90px;
+}
+
+.ant-modal-body {
+  /* height: 75vh; */
+  min-height: 30vh;
+}
+
+td.emergency {
+  background-color: #fca428bf;
+  /* color: white; */
+}
+
+.save-filter-modal {
+  transform-origin: top center !important;
+}

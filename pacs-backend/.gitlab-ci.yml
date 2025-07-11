@@ -1,0 +1,18 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  ENVIRONMENT: "production"
+
+build:
+  stage: build
+  script:
+    - npm install
+
+deploy:
+  stage: deploy
+  script:
+    - deploy_script.sh
+  only:
+    - deploy

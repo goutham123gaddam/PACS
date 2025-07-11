@@ -1,0 +1,21 @@
+.order-info-container {
+  .ant-card-head {
+    min-height: unset;
+    padding-left: 0.5rem;
+    color: orange;
+    font-size: 1.2rem;
+  }
+
+  .ant-radio-wrapper .ant-radio-inner {
+    border-color: #8f8c8c;
+  }
+
+  .ant-radio-wrapper:hover .ant-radio-inner {
+    border-color: #ef8200;
+  }
+
+  .separator {
+    border-bottom: 1px solid #bdbbbb;
+    margin-top: 0.5rem;
+  }
+}

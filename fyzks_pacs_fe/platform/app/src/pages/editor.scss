@@ -1,0 +1,32 @@
+.jodit-word-editor {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.editor-container {
+  margin-bottom: 20px;
+}
+
+.instructions {
+  margin-bottom: 15px;
+  color: #666;
+  font-style: italic;
+}
+
+.actions {
+  margin-top: 20px;
+}
+
+.actions button {
+  padding: 8px 16px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background-color: #3367d6;
+}

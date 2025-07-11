@@ -1,0 +1,135 @@
+:root {
+  --text-color-primary: #ef8200;
+}
+
+body {
+  width: 100vw;
+  height: 100vh;
+  background: white;
+}
+
+.ant-table-cell {
+  line-height: 1.25 !important;
+  padding: 0.5rem 1rem !important;
+  overflow-x: hidden;
+}
+
+.ant-table-row .ant-table-cell {
+  border-top: 1px solid #00000030;
+}
+
+.mt-3 {
+  margin-top: 0.75rem;
+}
+
+.d-flex {
+  display: flex;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.me-3 {
+  margin-right: 0.75rem;
+}
+
+.space-between {
+  justify-content: space-between;
+}
+
+.align-items-center {
+  align-items: center;
+}
+
+.report-modal {}
+
+.md-icon {
+  font-size: 1rem;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.ms-3 {
+  margin-left: 0.5rem;
+}
+
+.ms-auto {
+  margin-left: auto;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.ant-btn-primary {
+  background-color: #fca428 !important;
+}
+
+.bold-font {
+  font-weight: bold;
+}
+
+
+.ant-card-bordered {
+  border: 1px solid #b8b1b1f7;
+  border-radius: 5px;
+}
+
+.ant-card-body {
+  padding: 0.5rem !important;
+}
+
+.ant-table-content table {
+  border: 1px solid gray;
+}
+
+.header-title {
+  color: white;
+  font-weight: bold;
+}
+
+.header-desc {
+  color: gainsboro;
+  font-size: small;
+}
+
+.bottom-study-item {
+  position: absolute;
+  top: 0
+}
+
+.prev-study-item {
+  border: 1px solid white;
+  margin-left: 0.5rem;
+  position: relative;
+  /* width: '100%'; */
+  min-width: 190px;
+  min-width: 224px;
+}
+
+.line-height1 {
+  line-height: 1 !important;
+}
+
+.study-item-desc {
+  line-height: 1 !important;
+  height: auto !important;
+  line-height: 1rem !important;
+}
+
+.h-100 {
+  height: 100%;
+}
+
+.page-title {
+  font-size: 2.25rem;
+  color: #e98611;
+  font-weight: 600;
+}
+
+.whitespace-normal {
+  white-space: normal;
+}
