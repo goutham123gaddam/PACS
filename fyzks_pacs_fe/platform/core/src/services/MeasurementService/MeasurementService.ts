@@ -501,7 +501,7 @@ class MeasurementService extends PubSubService {
         mapping => mapping.annotationType === annotationType
       );
       if (!sourceMapping) {
-        console.log('No source mapping', source);
+        console.log('No source mapping'); // source
         return;
       }
       const { toMeasurementSchema } = sourceMapping;

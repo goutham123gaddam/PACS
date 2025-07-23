@@ -103,17 +103,17 @@ export const ToolAutoZoom = (props: IconProps) => (
     viewBox="0 0 24 24"
     fill="none"
     {...props}>
-  <rect x="2" y="2" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+  <rect x="2" y="2" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" rx="2"/>
 
-  <rect x="5" y="5" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" rx="1"/>
+  <rect x="5" y="5" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" rx="1"/>
 
-  <path d="M7 9L4 6L7 3" stroke="currentColor" stroke-width="1.5" fill="none"/>
-  <path d="M17 3L20 6L17 9" stroke="currentColor" stroke-width="1.5" fill="none"/>
-  <path d="M7 21L4 18L7 15" stroke="currentColor" stroke-width="1.5" fill="none"/>
-  <path d="M17 15L20 18L17 21" stroke="currentColor" stroke-width="1.5" fill="none"/>
+  <path d="M7 9L4 6L7 3" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+  <path d="M17 3L20 6L17 9" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+  <path d="M7 21L4 18L7 15" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+  <path d="M17 15L20 18L17 21" stroke="currentColor" strokeWidth="1.5" fill="none"/>
 
-  <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <line x1="14" y1="14" x2="16" y2="16" stroke="currentColor" stroke-width="1.5"/>
+  <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+  <line x1="14" y1="14" x2="16" y2="16" stroke="currentColor" strokeWidth="1.5"/>
 </svg>
 );
 
@@ -1757,6 +1757,26 @@ export const ToolInvert = (props: IconProps) => (
         fill="currentColor"
       ></path>
     </g>
+  </svg>
+);
+
+export const VerticalSeparatorThick = (props: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="28"
+    height="28"
+    {...props}
+    viewBox="0 0 28 28"
+  >
+    <rect
+      x="9"
+      y="4"
+      width="4"
+      height="24"
+      fill="currentColor"
+      opacity="0.8"
+      rx="1"
+    />
   </svg>
 );
 

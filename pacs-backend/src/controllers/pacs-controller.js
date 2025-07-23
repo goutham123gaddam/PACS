@@ -1741,8 +1741,23 @@ const printReport = async (req, res, next) => {
 };
 
 const printReportByAcc = async(req, res) => {
-  const {order_id, fromDispatch, user_id, received_by} = req.body;
+  const isGetRequest = req.method === 'GET';
+  const params = isGetRequest ? req.query : req.body;
+  const {order_id, fromDispatch, user_id, received_by, patient_id} = params;
   try {
+
+    if (isGetRequest && patient_id && order_id) {
+      const ordDetails = await models.PACS_ORDERS.findOne({
+        where: {
+          pacs_ord_id: order_id,
+          po_pat_pacs_id: patient_id,
+        },
+        raw: true
+      });
+      if (!ordDetails) {
+        return res.status(500).message("Details entered are incorrect!");
+      }
+    }
     const reportContent =  await models.REPORTS.findOne({
       where: {
         pr_pacs_ord_id: order_id
@@ -1838,6 +1853,12 @@ const printReportByAcc = async(req, res) => {
     let file = { content: updatedHtml };
     const pdfBuffer = await html_to_pdf.generatePdf(file, options);
     // res.setHeader("Content-Type", "application/pdf");
+    // Set proper headers for PDF serving
+    if (isGetRequest) {
+      res.type('application/pdf');
+      res.header('Content-Disposition', `inline; filename="report-${order_id}.pdf"`);
+    }
+    
     res.send(Buffer.from(pdfBuffer));
   } catch(e) {
     console.log("Error printing", e);
@@ -2059,7 +2080,7 @@ const saveLoadingTime = async(req, res) => {
 
 const getLoadingTimes = async (req, res) => {
   try {
-    const { study_id, series_id, stat_type, user_id, modality, created_after } = req.query;
+    const { study_id, series_id, stat_type, user_id, modality, created_after, created_before } = req.query;
 
     const whereClause = {};
 
@@ -2069,7 +2090,23 @@ const getLoadingTimes = async (req, res) => {
     if (user_id) whereClause.vs_user_id = user_id;
     if (modality) whereClause.vs_modality = modality;
 
-    if (created_after) {
+    // Handle date range filtering
+    if (created_after && created_before) {
+      const startDate = new Date(created_after);
+      const endDate = new Date(created_before);
+
+      if (!isNaN(startDate) && !isNaN(endDate)) {
+        whereClause.created_at = {
+          [Op.between]: [startDate, endDate],
+        };
+      } else {
+        return res.status(400).send({
+          success: false,
+          message: 'Invalid date range format.',
+        });
+      }
+    } else if (created_after) {
+      // Support for single date (backwards compatibility)
       const date = new Date(created_after);
       if (!isNaN(date)) {
         whereClause.created_at = {
@@ -2081,10 +2118,24 @@ const getLoadingTimes = async (req, res) => {
           message: "Invalid 'created_after' timestamp format.",
         });
       }
+    } else if (created_before) {
+      // Support for single end date
+      const date = new Date(created_before);
+      if (!isNaN(date)) {
+        whereClause.created_at = {
+          [Op.lt]: date,
+        };
+      } else {
+        return res.status(400).send({
+          success: false,
+          message: "Invalid 'created_before' timestamp format.",
+        });
+      }
     }
 
     const loadingTimes = await models.VIEWER_STATS.findAll({
       where: whereClause,
+      order: [['created_at', 'DESC']], // Order by creation date, newest first
     });
 
     return res.status(200).send({

@@ -30,11 +30,11 @@ function initDefaultToolGroup(extensionManager, toolGroupService, commandsManage
         bindings: [{ mouseButton: Enums.MouseBindings.Auxiliary }],
       },
       {
-        toolName: toolNames.Zoom,
+        toolName: toolNames.StackScroll,
         bindings: [{ mouseButton: Enums.MouseBindings.Secondary }],
       },
       {
-        toolName: toolNames.StackScroll,
+        toolName: toolNames.Zoom,
         bindings: [{ mouseButton: Enums.MouseBindings.Wheel }],
       },
     ],

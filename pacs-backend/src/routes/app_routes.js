@@ -41,7 +41,7 @@ const { getPatientOrders, getPacsList, updatePatientScanStatus, saveReport, getP
 
 
   const { addUser, getPermissionsList, getUnitsList, getRolesList, deleteUser, getDiseasesList, getDoctorsList, 
-    notifyPhysicians, saveTemplate, getModalities, getBodyParts } = require('../controllers/common-controller');
+    notifyPhysicians, saveTemplate, getModalities, getBodyParts, getStatusList } = require('../controllers/common-controller');
 const { getPacsStudiesList } = require('../controllers/pacs-controller.js');
 const { sendHL7Message } = require('../controllers/startup-controller.js');
 const { oruHelper } = require('../controllers/hl7-controller.js');
@@ -131,6 +131,11 @@ module.exports = function routes(server, opts, done) {
   });
   
   server.post('/print-acc-report', async (req, res) => {
+    // console.log("here");
+    return printReportByAcc(req, res);
+  });
+
+  server.get('/print-pat-report', async (req, res) => {
     // console.log("here");
     return printReportByAcc(req, res);
   });
@@ -264,6 +269,10 @@ module.exports = function routes(server, opts, done) {
   server.post('/save-viewer-interactions', async (req, res) => {
     return saveViewerInteractions(req, res)
   })
+
+  server.get('/get-status-list', async (req, res) => {
+    return getStatusList(req, res);
+  });
   
   done();
 };

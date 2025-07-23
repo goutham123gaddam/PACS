@@ -33,8 +33,8 @@ const ThumbnailList = ({
       >
         {thumbnailItems.length > 0 && (
           <div
-            id="ohif-thumbnail-list"
-            className="bg-bkg-low grid grid-cols-[repeat(auto-fit,_minmax(0,135px))] place-items-start gap-[4px]"
+            id="ohif-thumbnail-list" // sandeep - to make left panel have only one thumbnail
+            className="bg-bkg-low nogrid mogrid-cols-[repeat(auto-fit,_minmax(0,135px))] place-items-start gap-[4px]"
           >
             {thumbnailItems.map(item => {
               const { displaySetInstanceUID, componentType, numInstances, ...rest } = item;

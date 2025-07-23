@@ -18,6 +18,7 @@ const ohif = {
 const cornerstone = {
   measurements: '@ohif/extension-cornerstone.panelModule.panelMeasurement',
   segmentation: '@ohif/extension-cornerstone.panelModule.panelSegmentation',
+  mipThickness: '@ohif/extension-cornerstone.panelModule.mip-thickness'
 };
 
 const tracked = {
@@ -70,6 +71,41 @@ const extensionDependencies = {
   '@ohif/extension-dicom-video': '^3.0.1',
 };
 
+const getCurrentModality = (servicesManager) => {
+  try {
+    const { viewportGridService, displaySetService } = servicesManager.services;
+
+    const activeViewportId = viewportGridService.getActiveViewportId();
+
+    const displaySetInstanceUIDs = displaySetService.getActiveDisplaySets();
+    // const displaySetInstanceUIDs = viewport?.getDisplaySetInstanceUIDs?.();
+
+    if (displaySetInstanceUIDs?.length > 0) {
+      const displaySet = displaySetInstanceUIDs[0];
+      return displaySet?.Modality || 'DEFAULT';
+    }
+
+    return 'DEFAULT';
+  } catch (error) {
+    console.warn('Could not determine current modality:', error);
+    return 'DEFAULT';
+  }
+};
+
+const waitForViewportsReady = (servicesManager) => {
+  return new Promise((resolve) => {
+    const { viewportGridService } = servicesManager.services;
+
+    const { unsubscribe } = viewportGridService.subscribe(
+      viewportGridService.EVENTS.VIEWPORTS_READY,
+      () => {
+        unsubscribe();
+        setTimeout(() => resolve(true), 200);
+      }
+    );
+  });
+};
+
 function modeFactory({ modeConfiguration }) {
   let _activatePanelTriggersSubscriptions = [];
   return {
@@ -81,8 +117,8 @@ function modeFactory({ modeConfiguration }) {
     /**
      * Lifecycle hooks
      */
-    onModeEnter: function ({ servicesManager, extensionManager, commandsManager }: withAppTypes) {
-      const { measurementService, toolbarService, toolGroupService, customizationService } =
+    onModeEnter: async function ({ servicesManager, extensionManager, commandsManager }: withAppTypes) {
+      const { measurementService, toolbarService, toolGroupService, customizationService, favoritesService } =
         servicesManager.services;
 
       measurementService.clearMeasurements();
@@ -91,8 +127,32 @@ function modeFactory({ modeConfiguration }) {
       initToolGroups(extensionManager, toolGroupService, commandsManager);
 
       toolbarService.register(toolbarButtons);
-      toolbarService.updateSection(toolbarService.sections.primary, [
-        'MeasurementTools',
+
+      const defaultModalityFavorites = {
+        'DEFAULT': ['Zoom', 'Pan', 'Length', 'WindowLevel'],
+        'CT': ['Zoom', 'Pan', 'WindowLevel', 'EllipticalROI', 'ReferenceLines'],
+        'MR': ['Zoom', 'Pan', 'WindowLevel', 'EllipticalROI', 'StackScroll'],
+        'DX': ['Zoom', 'Pan', 'Length', 'Angle', 'invert'],
+        'CR': ['Zoom', 'Pan', 'Length', 'Angle', 'invert'],
+        'US': ['Zoom', 'Pan', 'UltrasoundDirectionalTool', 'Cine'],
+        'MG': ['Zoom', 'Pan', 'Length', 'Angle', 'Magnify'],
+        'PT': ['Zoom', 'Pan', 'WindowLevel', 'EllipticalROI', 'Probe'],
+      };
+
+      await waitForViewportsReady(servicesManager);
+
+      const currentFavorites = favoritesService.getAllModalityFavorites();
+      if (Object.keys(currentFavorites).length === 0) {
+        favoritesService.setModalityFavorites(defaultModalityFavorites);
+      }
+
+      const currentModality = getCurrentModality(servicesManager);
+
+      const modalityFavorites = currentFavorites[currentModality] || currentFavorites['DEFAULT'] || [];
+      // Initialize toolbar integration AFTER toolbar is registered
+      favoritesService.initializeToolbarIntegration(currentModality);
+
+      const primaryTools = ['MeasurementTools',
         'StackScroll',
         'Zoom',
         'Pan',
@@ -104,7 +164,12 @@ function modeFactory({ modeConfiguration }) {
         'Capture',
         'Layout',
         'Crosshairs',
-        'MoreTools',
+        'MoreTools'];
+
+      toolbarService.updateSection(toolbarService.sections.primary, [
+        ...modalityFavorites,
+        'SeparatorTool',
+        ...primaryTools?.filter((val) => !modalityFavorites.includes(val))
       ]);
 
       toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topLeft, [
@@ -134,7 +199,7 @@ function modeFactory({ modeConfiguration }) {
         'windowLevelMenu',
       ]);
 
-      toolbarService.updateSection('MeasurementTools', [
+      const measurementTools = [
         'Length',
         'Bidirectional',
         'ArrowAnnotate',
@@ -146,9 +211,13 @@ function modeFactory({ modeConfiguration }) {
         'LivewireContour',
         'CardioThoracicRatio',
         'SpineLabeling'
+      ];
+
+      toolbarService.updateSection('MeasurementTools', [
+        ...measurementTools.filter((val) => !modalityFavorites.includes(val))
       ]);
 
-      toolbarService.updateSection('MoreTools', [
+      const moreTools = [
         'Reset',
         'rotate-right',
         'flipHorizontal',
@@ -166,7 +235,11 @@ function modeFactory({ modeConfiguration }) {
         'TagBrowser',
         'AdvancedMagnify',
         'UltrasoundDirectionalTool',
-        'WindowLevelRegion',
+        'WindowLevelRegion'
+      ];
+
+      toolbarService.updateSection('MoreTools', [
+        ...moreTools.filter((val) => !modalityFavorites.includes(val))
       ]);
 
       customizationService.setCustomizations({
@@ -252,7 +325,7 @@ function modeFactory({ modeConfiguration }) {
             props: {
               leftPanels: [tracked.thumbnailList],
               leftPanelResizable: true,
-              rightPanels: [cornerstone.segmentation, tracked.measurements],
+              rightPanels: [cornerstone.segmentation, tracked.measurements, cornerstone.mipThickness],
               rightPanelClosed: true,
               rightPanelResizable: true,
               viewports: [

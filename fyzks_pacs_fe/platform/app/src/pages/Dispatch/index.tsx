@@ -10,6 +10,7 @@ import FyzksInput from '../../components/FyzksInput';
 import { debounce } from 'lodash';
 import ReportViewer from '../ReportViewer';
 import { useForm } from 'antd/es/form/Form';
+import { launchViewerOnDualMonitor, checkMonitorSetup } from '../../utils/MonitorManager';
 
 const { RangePicker } = DatePicker;
 
@@ -34,7 +35,8 @@ const DispatchList = ({ isConsultant }) => {
 
   const openReport = async (record) => {
     if (isConsultant) {
-      window.open(`/viewer?StudyInstanceUIDs=${record?.po_study_uid}`, '_blank');
+      // window.open(`/viewer?StudyInstanceUIDs=${record?.po_study_uid}`, '_blank');
+      await launchViewerOnDualMonitor(record?.po_study_uid);
     }
     // printReport(record)
     captureReceiver(record);

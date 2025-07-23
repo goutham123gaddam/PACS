@@ -25,6 +25,7 @@ import {
 } from '@ohif/core';
 
 import loadModules, { loadModule as peerImport } from './pluginImports';
+import { FavoritesService } from '../../core/src/services';
 
 /**
  * @param {object|func} appConfigOrFunc - application configuration, or a function that returns application configuration
@@ -69,6 +70,7 @@ async function appInit(appConfigOrFunc, defaultExtensions, defaultModes) {
     DisplaySetService.REGISTRATION,
     [CustomizationService.REGISTRATION, appConfig.customizationService],
     ToolbarService.REGISTRATION,
+    FavoritesService.REGISTRATION,
     ViewportGridService.REGISTRATION,
     HangingProtocolService.REGISTRATION,
     CineService.REGISTRATION,

@@ -36,10 +36,10 @@ const insertPatData = async (msg) => {
     const orc = msg.getSegment("ORC");
     const obr = msg.getSegment("OBR");
 
-    printAllFields(pid, "PID");
-    printAllFields(pv1, "PV1");
-    printAllFields(orc, "ORC");
-    printAllFields(obr, "OBR");
+    // printAllFields(pid, "PID");
+    // printAllFields(pv1, "PV1");
+    // printAllFields(orc, "ORC");
+    // printAllFields(obr, "OBR");
     
     const pin = pid.getField(3);
     const pat_name = pid.getField(5);
@@ -68,7 +68,7 @@ const insertPatData = async (msg) => {
 
     const trimmed_desc = diag_desc?.toUpperCase()?.trim();
 
-    console.log("INSIDE INSERTC PAT DATA",pin, diag_desc);
+    // console.log("INSIDE INSERTC PAT DATA",pin, diag_desc);
     
     if(trimmed_desc.includes('CT SCAN') || trimmed_desc.includes('BRAIN') || ['RC', 'PX'].includes(section_cd) || true) {
       if(request_type == 'NW') {

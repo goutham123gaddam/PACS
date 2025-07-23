@@ -1,13 +1,17 @@
 // RichTextEditor.js
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import Quill from 'quill';
 
 import 'quill/dist/quill.snow.css';
 import { Button } from 'antd';
-import { getUserDetails, makePostCall } from '../../utils/helper';
+import { getUserDetails, makePostCall, PatientHeader } from '../../utils/helper';
 import CustomEditor from '../custom-editor';
+import TinyEditor from './tinymce-editor';
 
-const RichTextEditor = ({ content, onChange, onSave, cancel, currentReport, patDetails, fromReporting }) => {
+const RichTextEditor = ({ content, onChange, onSave, cancel, currentReport, patDetails, fromReporting, orderDetails }) => {
+
+  const {pacs_order} = patDetails;
+  const {patient} = pacs_order;
 
   const userDetails = getUserDetails();
   const userType = userDetails?.user_type;
@@ -38,31 +42,22 @@ const RichTextEditor = ({ content, onChange, onSave, cancel, currentReport, patD
 
   const statusOrder = ['DRAFTED', 'REVIEWED', 'SIGNEDOFF'];
 
+  const headerContent = useMemo(() => {
+    return PatientHeader(patient, currentReport, pacs_order)
+  }, [patDetails, currentReport]);
+
   return (<div id='editor-container'>
     {/* <div ref={editorRef}></div> */}
-    <CustomEditor fromReporting={fromReporting} initialContent={content} placeholder={"placeholder..."} handleChange={onChange} />
-    {/* <div className='d-flex' >
-      <Button className='mt-3' type='default' onClick={cancel}>Cancel</Button>
-      <Button className='mt-3' type='default' onClick={handlePrint}>PRINT REPORT</Button>
-      <Button
-        disabled={statusOrder.indexOf(currentReport?.pr_status) > 0}
-        danger className='mt-3 ms-auto' type='default'
-        color='primary' onClick={() => handleSave('DRAFTED')}
-      >DRAFT</Button>
-      <Button
-        disabled={currentReport?.pr_status === 'SIGNEDOFF'}
-        danger className='mt-3 ms-3' type='default' color='primary'
-        onClick={() => handleSave('REVIEWED')}
-      >REVIEWED</Button>
-      <Button
-        // disabled={statusOrder.indexOf(currentReport?.pr_status) < 1}
-        className='mt-3 ms-3' type='primary' color='primary'
-        onClick={() => handleSave('SIGNEDOFF')}
-        disabled={['hod', 'radiologist'].indexOf(userType) < 0}
-      >
-        SIGN OFF
-      </Button>
-    </div> */}
+    {/* <CustomEditor fromReporting={fromReporting} initialContent={content} placeholder={"placeholder..."} handleChange={onChange} /> */}
+    <TinyEditor
+      fromReporting={fromReporting}
+      initialContent={content}
+      placeholder={"placeholder..."}
+      handleChange={onChange}
+      headerContent={headerContent}
+      // headerContent="<strong>Medical Report</strong> | Patient: John Doe | Date: 2025-07-10"
+      footerContent="Note: This is a professional opinion only, Each investigation has its limitations. Final diagnosis needs correlation with clinical context and other investigations. Kindly discuss, if necessary."
+    />
   </div>);
 };
 

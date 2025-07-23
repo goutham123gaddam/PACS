@@ -142,7 +142,7 @@ const OHIFCornerstoneViewport = React.memo(
             total_instances: window.volumeLoadInfo[currentStudy][currentSeries]?.total,
             modality: getCurrentModality()
           }).then((res) => {
-            console.log("saved time resp", res);
+            // console.log("saved time resp", res);
           }).catch(e => {
             console.log("Error", e);
           })
@@ -469,7 +469,7 @@ const OHIFCornerstoneViewport = React.memo(
             style={{ height: '100%', width: '100%' }}
             onContextMenu={e => e.preventDefault()}
             onMouseDown={e => e.preventDefault()}
-            data-viewportId={viewportId}
+            data-viewportid={viewportId}
             ref={el => {
               elementRef.current = el;
               if (el) {

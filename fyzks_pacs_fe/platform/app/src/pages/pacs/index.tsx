@@ -20,6 +20,7 @@ import ViewNotes from '../ManageNodes/ViewNotes';
 import { useForm } from 'antd/es/form/Form';
 import OrderInfoPopup from '../OrderInfo';
 import PdfViewer from '../../components/PdfViewer';
+import { launchViewerOnDualMonitor, checkMonitorSetup } from '../../utils/MonitorManager';
 
 
 const { RangePicker } = DatePicker;
@@ -147,13 +148,14 @@ const PacsList = () => {
     setReportEditorModal({ visible: false, data: {} });
   }
 
-  const openViewer = (record) => {
+  const openViewer = async (record: any): Promise<void> => {
     if (hasStudyViewingPermission(userDetails)) {
-      window.open(`/viewer?StudyInstanceUIDs=${record?.ps_study_uid}`, '_blank')
+      const viewerWindow = await launchViewerOnDualMonitor(record?.ps_study_uid);
+      if (!viewerWindow) message.warning('Could not open viewer window');
     } else {
-      message.info("You do not habe the permission to view the study images")
+      message.info("You do not have permission to view study images");
     }
-  }
+  };
 
   const openRadDesk = (record) => {
     if (hasStudyViewingPermission(userDetails)) {
@@ -419,6 +421,8 @@ const PacsList = () => {
   const viewReport = (rec) => {
     setPrintLoading(true);
     const { pacs_order } = rec;
+    const {pacs_ord_id, patient} = pacs_order;
+    const {pat_pacs_id} = patient;
     makePostCall('/print-acc-report', {
       order_id: pacs_order.pacs_ord_id,
       user_id: getUserDetails()?.username,
@@ -426,7 +430,7 @@ const PacsList = () => {
       responseType: "arraybuffer",
     })
       .then(res => {
-        setViewerModal({ visible: true, data: res.data });
+        setViewerModal({ visible: true, data: res.data, patient_id: pat_pacs_id, order_id: pacs_ord_id });
       })
       .catch(err => {
         console.log("Error", err);
@@ -574,7 +578,7 @@ const PacsList = () => {
       .then(res => {
         message.success("Updated successfully");
         const prevOrders = [...(orders?.data || [])];
-        prevOrders[currentIndx].order_workflow.ow_assigned_technician = 
+        prevOrders[currentIndx].order_workflow.ow_assigned_technician =
           getUserDetails()?.username;
         setOrders({ data: prevOrders, loading: false })
       })
@@ -914,7 +918,7 @@ const PacsList = () => {
                 onCancel={() => { setViewerModal({ visible: false }) }}
                 okButtonProps={{ style: { display: 'none' } }}
               >
-                <PdfViewer pdfArrayBuffer={viewerModal?.data} />
+                <PdfViewer order_id={viewerModal?.order_id} patient_id={viewerModal?.patient_id} pdfArrayBuffer={viewerModal?.data} />
               </Modal>
             )
           }

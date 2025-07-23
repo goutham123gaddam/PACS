@@ -7,13 +7,13 @@ import { useSystem } from '@ohif/core';
 import { Toolbar } from '../Toolbar/Toolbar';
 import HeaderPatientInfo from './HeaderPatientInfo';
 import { PatientInfoVisibility } from './HeaderPatientInfo/HeaderPatientInfo';
-import { preserveQueryParameters } from '@ohif/app';
+import { preserveQueryParameters } from '../../../../platform/app/src/utils/preserveQueryParameters';
 import { Types } from '@ohif/core';
+import FavoritesSettingsModal from '../../../../platform/ui/src/components/FavoriteTools/FavoriteSettingsModal';
 
 function ViewerHeader({ appConfig }: withAppTypes<{ appConfig: AppTypes.Config }>) {
   const { servicesManager, extensionManager, commandsManager } = useSystem();
-  const { customizationService } = servicesManager.services;
-
+  const { customizationService, favoritesService } = servicesManager.services;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -37,7 +37,7 @@ function ViewerHeader({ appConfig }: withAppTypes<{ appConfig: AppTypes.Config }
   };
 
   const { t } = useTranslation();
-  const { show } = useModal();
+  const { show, hide } = useModal();
 
   const AboutModal = customizationService.getCustomization(
     'ohif.aboutModal'
@@ -46,6 +46,30 @@ function ViewerHeader({ appConfig }: withAppTypes<{ appConfig: AppTypes.Config }
   const UserPreferencesModal = customizationService.getCustomization(
     'ohif.userPreferencesModal'
   ) as Types.MenuComponentCustomization;
+
+  // Favorites modal handler
+  const handleOpenFavoritesSettings = () => {
+    const currentModalityFavorites = favoritesService.getAllModalityFavorites();
+
+    show({
+      content: FavoritesSettingsModal,
+      title: t('FavoritesModal:Modality-Specific Favorite Tools'),
+      containerClassName: 'max-w-6xl',
+      contentProps: {
+        currentFavorites: currentModalityFavorites,
+        maxFavorites: 8,
+        onSave: (modalityFavorites: ModalityFavorites) => {
+          favoritesService.setModalityFavorites(modalityFavorites);
+          hide();
+          // Optional: Show success notification
+          console.log('Modality favorites updated:', modalityFavorites);
+        },
+        onCancel: () => {
+          hide();
+        },
+      },
+    });
+  };
 
   const menuOptions = [
     {
@@ -68,6 +92,12 @@ function ViewerHeader({ appConfig }: withAppTypes<{ appConfig: AppTypes.Config }
           containerClassName:
             UserPreferencesModal?.containerClassName ?? 'flex max-w-4xl p-6 flex-col',
         }),
+    },
+    // NEW: Add Favorites Settings
+    {
+      title: t('Header:Favorite Tools'),
+      icon: 'star',
+      onClick: handleOpenFavoritesSettings,
     },
   ];
 

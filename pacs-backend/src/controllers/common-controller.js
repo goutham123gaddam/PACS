@@ -354,7 +354,7 @@ module.exports = {
   getPermissionsList, //no need
   getUnitsList, // no need
   getRolesList, // no need
-  getStatusList, // no need
+  getStatusList,
   deleteUser, // no need
   getDiseasesList, // no need
   getDoctorsList,  // no need

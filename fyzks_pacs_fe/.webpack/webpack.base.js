@@ -201,6 +201,7 @@ module.exports = (env, argv, { SRC_DIR, ENTRY }) => {
       ], //.concat(vtkRules),
     },
     resolve: {
+      fullySpecified: false,
       mainFields: ['module', 'browser', 'main'],
       alias: {
         // Viewer project

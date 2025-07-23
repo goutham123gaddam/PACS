@@ -75,6 +75,7 @@
     "link-list": "npm ls --depth=0 --link=true"
   },
   "dependencies": {
+    "@tinymce/tinymce-react": "^6.2.1",
     "antd": "^5.25.3",
     "execa": "^8.0.1",
     "jodit-react": "^5.2.19",

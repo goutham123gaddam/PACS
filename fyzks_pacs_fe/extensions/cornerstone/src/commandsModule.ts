@@ -2126,6 +2126,245 @@ function commandsModule({
         deleting,
       });
     },
+    getViewportOrientation: (viewport) => {
+    try {
+      const camera = viewport.getCamera();
+      const { viewPlaneNormal } = camera;
+
+      // Determine orientation based on view plane normal
+      const absX = Math.abs(viewPlaneNormal[0]);
+      const absY = Math.abs(viewPlaneNormal[1]);
+      const absZ = Math.abs(viewPlaneNormal[2]);
+
+      if (absZ > absX && absZ > absY) {
+        return 'axial';
+      } else if (absY > absX && absY > absZ) {
+        return 'coronal';
+      } else if (absX > absY && absX > absZ) {
+        return 'sagittal';
+      }
+
+      return 'unknown';
+    } catch (error) {
+      console.warn('Error determining viewport orientation:', error);
+      return 'unknown';
+    }
+  },
+
+  // Helper function to get viewports by orientation
+  getViewportsByOrientation: (targetOrientation) => {
+    const { viewports } = viewportGridService.getState();
+    const matchingViewports = [];
+
+    viewports.forEach((viewport, viewportId) => {
+      const cornerstoneViewport = cornerstoneViewportService.getCornerstoneViewport(viewportId);
+      if (cornerstoneViewport) {
+        const orientation = actions.getViewportOrientation(cornerstoneViewport);
+        if (orientation === targetOrientation) {
+          matchingViewports.push({ viewportId, viewport: cornerstoneViewport });
+        }
+      }
+    });
+
+    return matchingViewports;
+  },
+
+  // Set thickness for specific axis - only affects matching viewport orientations
+  setAxisMIPSlabThickness: ({ viewportId, axis, slabThickness }) => {
+    let targetViewports = [];
+
+    if (viewportId) {
+      // If specific viewport provided, use it
+      const cornerstoneViewport = cornerstoneViewportService.getCornerstoneViewport(viewportId);
+      if (cornerstoneViewport) {
+        targetViewports = [{ viewportId, viewport: cornerstoneViewport }];
+      }
+    } else {
+      // Find viewports that match the axis orientation
+      targetViewports = actions.getViewportsByOrientation(axis);
+    }
+
+    // If no matching viewports found, apply to active viewport as fallback
+    if (targetViewports.length === 0) {
+      const { activeViewportId } = viewportGridService.getState();
+      const activeViewport = cornerstoneViewportService.getCornerstoneViewport(activeViewportId);
+      if (activeViewport) {
+        targetViewports = [{ viewportId: activeViewportId, viewport: activeViewport }];
+      }
+    }
+
+    targetViewports.forEach(({ viewportId: vpId, viewport }) => {
+      try {
+        // Set on viewport properties
+        const properties = viewport.getProperties() || {};
+        const axisThickness = properties.axisSlabThickness || {};
+        axisThickness[axis] = slabThickness;
+
+        viewport.setProperties({
+          ...properties,
+          slabThickness: slabThickness,
+          axisSlabThickness: axisThickness
+        });
+
+        // Set on camera
+        const camera = viewport.getCamera();
+        viewport.setCamera({
+          ...camera,
+          slabThickness: slabThickness
+        });
+
+        viewport.render();
+
+      } catch (error) {
+        console.warn(`Failed to set ${axis} slab thickness on viewport ${vpId}:`, error);
+      }
+    });
+  },
+
+  // Set thickness for all viewports (like the working Multi-VP method)
+  setMIPSlabThicknessAllViewports: ({ slabThickness }) => {
+    const { viewports } = viewportGridService.getState();
+
+    viewports.forEach((viewport, viewportId) => {
+      const cornerstoneViewport = cornerstoneViewportService.getCornerstoneViewport(viewportId);
+
+      if (cornerstoneViewport) {
+        try {
+          // Set on viewport properties
+          const properties = cornerstoneViewport.getProperties() || {};
+          cornerstoneViewport.setProperties({
+            ...properties,
+            slabThickness: slabThickness
+          });
+
+          // Set on camera
+          const camera = cornerstoneViewport.getCamera();
+          cornerstoneViewport.setCamera({
+            ...camera,
+            slabThickness: slabThickness
+          });
+
+        } catch (error) {
+          console.warn(`Failed to set slab thickness on viewport ${viewportId}:`, error);
+        }
+      }
+    });
+
+    // Render all viewports
+    const renderingEngine = cornerstoneViewportService.getRenderingEngine();
+    if (renderingEngine) {
+      renderingEngine.render();
+    }
+  },
+
+  // Set thickness for specific viewport only
+  setMIPSlabThicknessSpecificViewport: ({ viewportId, slabThickness }) => {
+    const targetViewportId = viewportId || viewportGridService.getActiveViewportId();
+    const viewport = cornerstoneViewportService.getCornerstoneViewport(targetViewportId);
+
+    if (viewport) {
+      try {
+        // Set on viewport properties
+        const properties = viewport.getProperties() || {};
+        viewport.setProperties({
+          ...properties,
+          slabThickness: slabThickness
+        });
+
+        // Set on camera
+        const camera = viewport.getCamera();
+        viewport.setCamera({
+          ...camera,
+          slabThickness: slabThickness
+        });
+
+        viewport.render();
+
+      } catch (error) {
+        console.warn(`Failed to set slab thickness on viewport ${targetViewportId}:`, error);
+      }
+    }
+  },
+
+  // Get current thickness from specific axis viewport
+  getAxisMIPSlabThickness: ({ viewportId, axis }) => {
+    let targetViewport;
+
+    if (viewportId) {
+      targetViewport = cornerstoneViewportService.getCornerstoneViewport(viewportId);
+    } else {
+      // Find viewport that matches the axis orientation
+      const matchingViewports = actions.getViewportsByOrientation(axis);
+      if (matchingViewports.length > 0) {
+        targetViewport = matchingViewports[0].viewport;
+      } else {
+        // Fallback to active viewport
+        const { activeViewportId } = viewportGridService.getState();
+        targetViewport = cornerstoneViewportService.getCornerstoneViewport(activeViewportId);
+      }
+    }
+
+    if (targetViewport) {
+      try {
+        const properties = targetViewport.getProperties();
+        const axisThickness = properties.axisSlabThickness || {};
+        return axisThickness[axis] || properties.slabThickness || 5.0;
+      } catch (error) {
+        console.warn('Error getting axis slab thickness:', error);
+      }
+    }
+
+    return 5.0; // default
+  },
+
+  // Get all axis thicknesses from their respective viewports
+  getAllAxisMIPSlabThickness: ({ viewportId }) => {
+    const result = {
+      sagittal: 5.0,
+      coronal: 5.0,
+      axial: 5.0
+    };
+
+    ['sagittal', 'coronal', 'axial'].forEach(axis => {
+      result[axis] = actions.getAxisMIPSlabThickness({ viewportId, axis });
+    });
+
+    return result;
+  },
+
+  // Set same thickness for all axes (affects all corresponding viewports)
+  setAllAxisMIPSlabThickness: ({ slabThickness }) => {
+    ['sagittal', 'coronal', 'axial'].forEach(axis => {
+      actions.setAxisMIPSlabThickness({ axis, slabThickness });
+    });
+  },
+
+  // Debug function to show viewport orientations
+  debugViewportOrientations: () => {
+    const { viewports } = viewportGridService.getState();
+    const orientations = {};
+
+    viewports.forEach((viewport, viewportId) => {
+      const cornerstoneViewport = cornerstoneViewportService.getCornerstoneViewport(viewportId);
+      if (cornerstoneViewport) {
+        const orientation = actions.getViewportOrientation(cornerstoneViewport);
+        orientations[viewportId] = orientation;
+      }
+    });
+    return orientations;
+  },
+  // Enhanced reset that also resets slab thickness
+  resetViewportWithSlabThickness: ({ viewportId, resetThickness = true }) => {
+    // First do normal reset
+    actions.resetViewport();
+
+    // Then reset slab thickness if requested
+    if (resetThickness) {
+      setTimeout(() => {
+        actions.setAllAxisMIPSlabThickness({ viewportId, slabThickness: 5.0 });
+      }, 100);
+    }
+  }
   };
 
   const definitions = {
@@ -2416,6 +2655,55 @@ function commandsModule({
     hydrateSecondaryDisplaySet: actions.hydrateSecondaryDisplaySet,
     getVolumeIdForDisplaySet: actions.getVolumeIdForDisplaySet,
     triggerCreateAnnotationMemo: actions.triggerCreateAnnotationMemo,
+    setAxisMIPSlabThickness: {
+    commandFn: actions.setAxisMIPSlabThickness,
+    storeContexts: ['viewports'],
+    options: {},
+  },
+
+  setMIPSlabThicknessAllViewports: {
+    commandFn: actions.setMIPSlabThicknessAllViewports,
+    storeContexts: ['viewports'],
+    options: {},
+  },
+
+  setMIPSlabThicknessSpecificViewport: {
+    commandFn: actions.setMIPSlabThicknessSpecificViewport,
+    storeContexts: ['viewports'],
+    options: {},
+  },
+
+  getAxisMIPSlabThickness: {
+    commandFn: actions.getAxisMIPSlabThickness,
+    storeContexts: ['viewports'],
+    options: {},
+  },
+
+  getAllAxisMIPSlabThickness: {
+    commandFn: actions.getAllAxisMIPSlabThickness,
+    storeContexts: ['viewports'],
+    options: {},
+  },
+
+  setAllAxisMIPSlabThickness: {
+    commandFn: actions.setAllAxisMIPSlabThickness,
+    storeContexts: ['viewports'],
+    options: {},
+  },
+
+  debugViewportOrientations: {
+    commandFn: actions.debugViewportOrientations,
+    storeContexts: ['viewports'],
+    options: {},
+  },
+
+  resetViewportWithSlabThickness: {
+    commandFn: actions.resetViewportWithSlabThickness,
+    storeContexts: ['viewports'],
+    options: {},
+  },
+
+
   };
 
   return {

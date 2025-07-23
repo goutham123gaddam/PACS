@@ -170,18 +170,27 @@ const getCanvasPoint = (event, element) => {
 };
 
 const handleGoToImage = (element, position) => {
-  const enabledElement = getEnabledElement(element);
-  if (!enabledElement) return;
+  try {
+    const enabledElement = getEnabledElement(element);
+    if (!enabledElement?.viewport) {
+      console.warn('No enabled element found');
+      return;
+    }
+    // Get the cornerstone viewport from the element
+    const viewport = enabledElement?.viewport;
 
-  const viewport = enabledElement.viewport;
+    if (viewport instanceof StackViewport) {
+      const imageIds = viewport.getImageIds();
+      const targetIndex = position === 'first' ? 0 : imageIds.length - 1;
 
-  if (viewport instanceof StackViewport) {
-    const imageIds = viewport.getImageIds();
-    const targetIndex = position === 'first' ? 0 : imageIds.length - 1;
+      // Use setImageIdIndex instead of jumpToSlice
+      viewport.setImageIdIndex(targetIndex);
 
-    cs3DTools.utilities.jumpToSlice(element, {
-      imageIndex: targetIndex,
-    });
+      // Render the viewport to update the display
+      viewport.render();
+    }
+  } catch (error) {
+    console.error('Error navigating to image:', error);
   }
 };
 

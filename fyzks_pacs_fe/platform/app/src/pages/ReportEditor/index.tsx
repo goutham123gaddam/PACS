@@ -2,14 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import RichTextEditor from "./rich-text-editor";
 import "./editor.css";
 import { ConvertStringToDate, getUserDetails, makeGetCall, makePostCall, RADIOLOGY_URL, removeContentById } from "../../utils/helper";
+import { useReportStatus } from "../../hooks/useReportStatus";
 import moment from "moment";
 import { Button, Card, Checkbox, message, Modal, Radio, Select, Table } from "antd";
 import { TemplateHeader } from "./constants";
 import { RightSquareOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { Link } from "react-router-dom";
 import CriticalFinding from "./critical-finding";
+import { launchViewerOnDualMonitor, checkMonitorSetup } from '../../utils/MonitorManager';
 import PdfViewer from "../../components/PdfViewer";
-
 
 const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handlePostSaving }) => {
   const [content, setContent] = React.useState(null);
@@ -35,11 +36,27 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
   const [pendingHtml, setPendingHtml] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
+  // Use database-driven status system
+  const { statusList, loading: statusLoading, error: statusError } = useReportStatus();
+
   const { pacs_order } = patientDetails;
   const { patient } = pacs_order;
 
+  // Status mapping - frontend to backend
+  const statusMap = {
+    'DRAFTED': 'draft',
+    'REVIEWED': 'reviewed', 
+    'SIGNEDOFF': 'signoff'
+  };
+
+  // Reverse mapping - backend to frontend
+  const reverseStatusMap = {
+    'draft': 'DRAFTED',
+    'reviewed': 'REVIEWED',
+    'signoff': 'SIGNEDOFF'
+  };
+
   const handleContentChange = (newContent) => {
-    console.log("newContent", newContent);
     setContent(newContent);
   }
 
@@ -122,10 +139,13 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
   }
 
   const handleSave = (newContent, status, curReport, moreInfo = {}) => {
+    // Convert frontend status code to backend format
+    const backendStatus = statusMap[status] || status;
+    
     if (onSave) {
-      onSave(content, status, curReport, { ...moreInfo, proxy_user: proxyUser, co_signing_doctor: cosigningDoctor, correlated, diagnosed }, refreshAfterUpdate)
+      onSave(newContent, backendStatus, curReport, { ...moreInfo, proxy_user: proxyUser, co_signing_doctor: cosigningDoctor, correlated, diagnosed }, refreshAfterUpdate)
     } else {
-      saveReport(content, status, curReport, { ...moreInfo, proxy_user: proxyUser, co_signing_doctor: cosigningDoctor }, refreshAfterUpdate)
+      saveReport(newContent, backendStatus, curReport, { ...moreInfo, proxy_user: proxyUser, co_signing_doctor: cosigningDoctor }, refreshAfterUpdate)
     };
   }
 
@@ -143,7 +163,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
       ...moreInfo,
       proxy_user: proxy_user,
       co_signing_doctor: co_signing_doctor,
-      status,
+      status, // This should now be the backend format
       report_id: currentReport?.pr_id,
       // correlated: correlated,
       // diagnosed: diagnosed,
@@ -359,14 +379,19 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
     }));
   }, [allUsers]);
 
-  const handleSaveForm = (status) => {
+  const handleSaveForm = (statusCode) => {
     setSubmitTrigged(true);
     // if (!correlated || !diagnosed) {
     //   message.error("Please select the Correlated & Diagnosed options");
     //   return;
     // }
-    const cleanedHtml = removeContentById(content, 'cosign');
-    handleSave(cleanedHtml, status, currentReport);
+
+    const medicalContent = extractMedicalContent(content);
+
+    const cleanedHtml = removeContentById(medicalContent, 'cosign');
+    
+    // Pass the database status code directly (DRAFTED, REVIEWED, SIGNEDOFF)
+    handleSave(cleanedHtml, statusCode, currentReport);
   }
 
   const handlePrint = () => {
@@ -392,8 +417,6 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
       })
   }
 
-  const statusOrder = ['DRAFTED', 'REVIEWED', 'SIGNEDOFF'];
-
   const handleNotification = () => {
     setCriticalFindingModal({ visible: true, data: patientDetails })
   }
@@ -413,8 +436,134 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
   }
 
   const showLoadConfirmation = (newHtml) => {
-    setPendingHtml(newHtml);
-    setLoadModalVisible(true); 
+    // Helper function to check if content is empty
+    const isContentEmpty = (contentToCheck) => {
+      if (!contentToCheck) return true;
+      
+      const trimmedContent = contentToCheck.trim();
+      if (trimmedContent === "") return true;
+      if (trimmedContent === "<div></div>") return true;
+      if (trimmedContent === "<div><br></div>") return true;
+      if (trimmedContent === "<p></p>") return true;
+      if (trimmedContent === "<p><br></p>") return true;
+      
+      // Remove all HTML tags and check if there's any actual text content
+      const textContent = trimmedContent.replace(/<\/?[^>]+(>|$)/g, "").trim();
+      if (textContent === "" || textContent === "&nbsp;" || textContent.replace(/&nbsp;/g, "").trim() === "") {
+        return true;
+      }
+      
+      return false;
+    };
+  
+    // Check both the current content state AND the currentReport content
+    const isCurrentContentEmpty = isContentEmpty(content);
+    const isCurrentReportEmpty = isContentEmpty(currentReport?.pr_report_html);
+    
+    const isEditorEmpty = isCurrentContentEmpty;
+  
+    if (isEditorEmpty) {
+      // If editor is empty, directly load the template without showing popup
+      setCurrentReport((prev) => ({
+        ...prev,
+        pr_id: undefined,
+        pr_report_html: newHtml,
+        pr_status: 'DRAFTED',
+      }));
+      
+      // Also update the content state to keep them in sync
+      setContent(newHtml);
+    } else {
+      // If editor has content, show the confirmation popup
+      setPendingHtml(newHtml);
+      setLoadModalVisible(true); 
+    }
+  };
+
+  // Helper functions for button logic
+  const getButtonDisabledState = (statusCode, currentStatus) => {
+    // Create status order mapping from database
+    const statusOrderMap = {};
+    statusList.forEach(status => {
+      statusOrderMap[status.status_code] = status.status_order;
+    });
+    
+    const currentOrder = statusOrderMap[currentStatus] || 0;
+    const targetOrder = statusOrderMap[statusCode] || 0;
+    
+    switch (statusCode) {
+      case 'DRAFTED':
+        return currentOrder > targetOrder;
+      case 'REVIEWED':
+        return currentStatus === 'SIGNEDOFF';
+      case 'SIGNEDOFF':
+        return !['hod', 'radiologist'].includes(userType);
+      default:
+        return false;
+    }
+  };
+
+  const getButtonProps = (statusCode) => {
+    switch (statusCode) {
+      case 'SIGNEDOFF':
+        return { type: 'primary', className: 'mt-3 ms-3' };
+      case 'DRAFTED':
+        return { type: 'default', className: 'mt-3 ms-auto danger' };
+      case 'REVIEWED':
+        return { type: 'default', className: 'mt-3 ms-3 danger' };
+      default:
+        return { type: 'default', className: 'mt-3 ms-3' };
+    }
+  };
+
+  // Dynamic button rendering using database-driven statuses
+  const renderStatusButtons = () => {
+    if (statusLoading) {
+      return <div>Loading...</div>;
+    }
+
+    if (statusError || !statusList.length) {
+      console.error('Status loading error:', statusError);
+      // Fallback to hardcoded buttons with corrected status codes
+      return (
+        <>
+          <Button
+            disabled={getButtonDisabledState('DRAFTED', currentReport?.pr_status)}
+            danger className='mt-3 ms-auto' type='default'
+            color='primary' onClick={() => handleSaveForm('DRAFTED')}
+          >DRAFT</Button>
+          <Button
+            disabled={getButtonDisabledState('REVIEWED', currentReport?.pr_status)}
+            danger className='mt-3 ms-3' type='default' color='primary'
+            onClick={() => handleSaveForm('REVIEWED')}
+          >REVIEWED</Button>
+          <Button
+            className='mt-3 ms-3' type='primary' color='primary'
+            onClick={() => handleSaveForm('SIGNEDOFF')}
+            disabled={getButtonDisabledState('SIGNEDOFF', currentReport?.pr_status)}
+          >
+            SIGN OFF
+          </Button>
+        </>
+      );
+    }
+
+    return statusList.map((status) => {
+      const isDisabled = getButtonDisabledState(status.status_code, currentReport?.pr_status);
+      const buttonProps = getButtonProps(status.status_code);
+
+      return (
+        <Button
+          key={status.status_id}
+          className={buttonProps.className}
+          type={buttonProps.type}
+          disabled={isDisabled}
+          onClick={() => handleSaveForm(status.status_code)} // Use database status_code directly
+        >
+          {status.status_label}
+        </Button>
+      );
+    });
   };
 
   return (
@@ -427,7 +576,12 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
                 {`${patient?.pat_name}, ${patient?.pat_pin}`}
               </div>
               {/* <Link to={}>Go to Viewer</Link> */}
-              <Button danger className="ms-auto" type="default" onClick={() => { window.open(`/viewer?StudyInstanceUIDs=${patientDetails?.ps_study_uid}`, '_blank') }}> Launch Viewer</Button>
+              <Button danger className="ms-auto" type="default" onClick={
+                async () => { 
+                  const viewerWindow = await launchViewerOnDualMonitor(patientDetails?.ps_study_uid);
+                  if (!viewerWindow) message.warning('Could not open viewer window');
+                }
+              }> Launch Viewer</Button>
               <Button danger className="ms-auto" type="default" onClick={() => { goToRadiologyDesk(patientDetails) }}> Radiology Desk</Button>
             </div>
             <div>
@@ -447,20 +601,20 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
             />
           </div>
         </Card>
-        {
-          priorReports?.length > 0 && (
-            <Card className="mb-3">
-              <div className="bold-font">Prior Reports</div>
-              <div className="!prior-reports">
-                <Table
-                  pagination={false}
-                  columns={priorReportColumns}
-                  dataSource={priorReports || []}
-                />
-              </div>
-            </Card>
-          )
-        }
+        
+        {priorReports?.length > 0 && (
+          <Card className="mb-3">
+            <div className="bold-font">Prior Reports</div>
+            <div className="!prior-reports">
+              <Table
+                pagination={false}
+                columns={priorReportColumns}
+                dataSource={priorReports || []}
+              />
+            </div>
+          </Card>
+        )}
+        
         <Card className="mb-3">
           <div className="!templates-section">
             <div className="bold-font">Load Template</div>
@@ -512,6 +666,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
             </div>
           </div>
         </Card>
+        
         <Card className="mb-3">
           <div className="!more-options">
             <div className="bold-font">More Options</div>
@@ -519,24 +674,26 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
             {/* <div className="mt-2"><Checkbox /> Need peer opinion from</div>
             <div className="mt-2"><Checkbox /> Requires Sub-Speciality Opinion</div> */}
             <div className="mt-2"><Checkbox onChange={(e) => {
-              setMoreAction(e.target.checked ? 'co_signing' : null)
-            }} /> Report Co-Signing
+                setMoreAction(e.target.checked ? 'co_signing' : null)
+              }} /> Report Co-Signing
               {moreAction === 'co_signing' && (
                 <Select style={{ width: 180 }} onChange={(val, opt) => { handleCosigning(val, opt) }} options={radUserOptions} />
               )}
             </div>
 
-            <div className="mt-2"><Checkbox onChange={(e) => {
-              setMoreAction(e.target.checked ? 'proxy-draft' : null)
-            }} /> Proxy Draft
+            <div className="mt-2">
+              <Checkbox onChange={(e) => {
+                setMoreAction(e.target.checked ? 'proxy-draft' : null)
+              }} /> Proxy Draft
               {moreAction === 'proxy-draft' && (
                 <Select style={{ width: 180 }} onChange={(val) => { setProxyUser(val) }} options={allUserOptions} />
               )}
             </div>
 
-            <div className="mt-2"><Checkbox onChange={(e) => {
-              setMoreAction(e.target.checked ? 'proxy-signoff' : null)
-            }} /> Proxy Signoff
+            <div className="mt-2">
+              <Checkbox onChange={(e) => {
+                setMoreAction(e.target.checked ? 'proxy-signoff' : null)
+              }} /> Proxy Signoff
               {moreAction === 'proxy-signoff' && (
                 <Select style={{ width: 180 }} onChange={(val) => { setProxyUser(val) }} options={radUserOptions} />
               )}
@@ -549,6 +706,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
               </Radio.Group>
               {submitTriggered && correlatedMandatory && !diagnosed && <div style={{ color: 'red', marginBottom: '8px' }}>This field is required</div>}
             </div>
+            
             <div className="mt-2">Clinically correlated
               <Radio.Group value={correlated} className={submitTriggered ? (!!correlated ? '' : 'error') : ''} onChange={(e) => { setCorrelated(e.target.value) }}>
                 <Radio value={'correlated'}>Yes</Radio>
@@ -557,44 +715,38 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
               {submitTriggered && correlatedMandatory && !correlated && <div style={{ color: 'red', marginBottom: '8px' }}>This field is required</div>}
             </div>
           </div>
+          
           <div className='d-flex' >
             <Button className='mt-3' type='default' onClick={cancel}>Cancel</Button>
             <Button className='mt-3' type='default' onClick={handlePrint}>PRINT REPORT</Button>
-            <Button
-              disabled={statusOrder.indexOf(currentReport?.pr_status) > 0}
-              danger className='mt-3 ms-auto' type='default'
-              color='primary' onClick={() => handleSaveForm('draft')}
-            >DRAFT</Button>
-            <Button
-              disabled={currentReport?.pr_status === 'SIGNEDOFF'}
-              danger className='mt-3 ms-3' type='default' color='primary'
-              onClick={() => handleSaveForm('reviewed')}
-            >REVIEWED</Button>
-            <Button
-              // disabled={statusOrder.indexOf(currentReport?.pr_status) < 1}
-              className='mt-3 ms-3' type='primary' color='primary'
-              onClick={() => handleSaveForm('signoff')}
-              disabled={['hod', 'radiologist'].indexOf(userType) < 0}
-            >
-              SIGN OFF
-            </Button>
+            
+            {/* Database-driven status buttons */}
+            {renderStatusButtons()}
           </div>
         </Card>
       </div>
+      
       <div className="right-section">
-        <RichTextEditor fromReporting={true} patDetails={patientDetails} currentReport={currentReport} cancel={cancel} content={content || "<div></div>"}
-          onSave={handleSave} onChange={handleContentChange} />
+        <RichTextEditor 
+          fromReporting={true} 
+          patDetails={patientDetails} 
+          currentReport={currentReport} 
+          cancel={cancel} 
+          content={content || "<div></div>"}
+          onSave={handleSave} 
+          onChange={handleContentChange} 
+        />
       </div>
-      {
-        criticalFindingModal && (
-          <Modal
-            width={800}
-            open={criticalFindingModal?.visible}
-            onCancel={() => { setCriticalFindingModal({ visible: false, data: null }) }}
-            okButtonProps={{ style: { display: 'none' } }}
-          >
-            <CriticalFinding closeNotificationModal={() => { setCriticalFindingModal({}) }} patDetails={criticalFindingModal?.data} />
-          </Modal>
+      
+      {criticalFindingModal && (
+        <Modal
+          width={800}
+          open={criticalFindingModal?.visible}
+          onCancel={() => { setCriticalFindingModal({ visible: false, data: null }) }}
+          okButtonProps={{ style: { display: 'none' } }}
+        >
+          <CriticalFinding closeNotificationModal={() => { setCriticalFindingModal({}) }} patDetails={criticalFindingModal?.data} />
+        </Modal>
         )
       }
       {/* 
@@ -665,6 +817,27 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report, handleP
       </Modal>
     </div>
   );
+};
+
+const extractMedicalContent = (fullContent) => {
+  if (!fullContent || fullContent === '<div></div>') {
+    return '<div></div>';
+  }
+
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = fullContent;
+
+  // Remove ONLY the elements that TinyEditor auto-generates
+  // Use the exact same selectors that TinyEditor uses to remove/add
+  const elementsToRemove = tempDiv.querySelectorAll(
+    '.page-header-content, .page-footer-content, .mce-pagebreak.auto-break'
+  );
+  
+  elementsToRemove.forEach(el => el.remove());
+
+  const cleanContent = tempDiv.innerHTML.trim();
+  
+  return cleanContent || '<div></div>';
 };
 
 export default ReportEditor;

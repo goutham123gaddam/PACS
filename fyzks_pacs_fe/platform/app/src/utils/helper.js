@@ -46,10 +46,9 @@ export const makeGetCall = (url) => {
 const debouncedApiCall = debounce((payload) => {
   makePostCall("/save-viewer-interactions", payload)
     .then((res) => {
-      console.log("saved interaction resp", res);
     })
     .catch(e => {
-      console.log("Error", e);
+      console.error("Error", e);
     });
 }, 300); // 300ms delay
 
@@ -384,3 +383,86 @@ export const htmlToRtf = (htmlContent, patientData) => {
   rtf += '\\par}';
   return rtf;
 };
+
+const getAgeFromDOB = (dobString) => {
+  //tabnine- calculate age from dob - dob is like '19920323' in YYYYMMDD  format
+  // Parse the date string in YYYYMMDD format
+  const year = parseInt(dobString.substring(0, 4), 10);
+  const month = parseInt(dobString.substring(4, 6), 10) - 1; // Months are 0-based in JavaScript Date
+  const day = parseInt(dobString.substring(6, 8), 10);
+
+  // Create a date object for the DOB
+  const dob = new Date(year, month, day);
+
+  // Get today's date
+  const today = new Date();
+
+  // Calculate the difference in time
+  const diffInMilliseconds = today - dob;
+
+  // If the difference is negative, return an error
+  if (diffInMilliseconds < 0) {
+    return "Invalid DOB: Future date provided.";
+  }
+
+  // Calculate total days
+  const totalDays = Math.floor(diffInMilliseconds / (1000 * 60 * 60 * 24));
+
+  // Return age in days if less than a month
+  if (totalDays < 30) {
+    return `${totalDays} days`;
+  }
+
+  // Calculate total months
+  const totalMonths =
+    (today.getFullYear() - dob.getFullYear()) * 12 +
+    today.getMonth() -
+    dob.getMonth() -
+    (today.getDate() < dob.getDate() ? 1 : 0);
+
+  // Return age in months if less than a year
+  if (totalMonths < 12) {
+    return `${totalMonths} months`;
+  }
+
+  // Calculate years
+  let years = today.getFullYear() - dob.getFullYear();
+  if (
+    today.getMonth() < dob.getMonth() ||
+    (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())
+  ) {
+    years--;
+  }
+
+  return `${years} years`;
+}
+
+export const PatientHeader = (patDetails, currentReport, orderDetails) => {
+  const age = getAgeFromDOB(patDetails.pat_dob);
+  return (
+    `<div style="border: 1px solid; width: 90%; font-size: 12px; margin: auto; padding: 10px">
+      <div style="display: flex; margin-bottom: 4px">
+        <div style="flex: 1; display: flex;"><div style="width: 35%">Patient Name</div> :<div style="margin-left: 8px"><strong>${patDetails.pat_name}</strong></div></div>
+        <div style="flex: 1; display: flex"><div style="width: 35%">Sex / Age</div>  :<div style="margin-left: 8px"><strong>${patDetails.pat_sex} / ${age}</strong></div></div>
+      </div>
+      <div style="display: flex;  margin-bottom: 4px">
+        <div style="flex: 1; display: flex"><div style="width: 35%">YH No</div> :<div style="margin-left: 8px"><strong>${patDetails.pat_pin}</strong></div></div>
+        <div style="flex: 1; display: flex"><div style="width: 35%">Acc No</div> :<div style="margin-left: 8px"><strong>${orderDetails.po_acc_no}</strong></div></div>
+      </div>
+      <div style="display: flex;  margin-bottom: 4px">
+        <div style="flex: 1; display: flex"><div style="width: 35%">Ref Phys. </div> :<div style="margin-left: 8px"><strong>${orderDetails.po_ref_doc}</strong></div></div>
+        <div style="flex: 1; display: flex"><div style="width: 35%">Modality</div> :<div style="margin-left: 8px"><strong>${orderDetails.po_modality}</strong></div></div>
+      </div>
+      <div style="display: flex;  margin-bottom: 4px">
+        <div style="flex: 1; display: flex"><div style="width: 35%">Order Date/Time</div> :<div style="margin-left: 8px"><strong>${moment(orderDetails.po_req_time).format('DD/MM/YYYY HH:mm:ss')}</strong></div></div>
+        <div style="flex: 1; display: flex"><div style="width: 35%">IP No</div> :<div style="margin-left: 8px"><strong>${orderDetails.po_adm_no|| '-'}</strong></div></div>
+      </div>
+      <div style="display: flex;  margin-bottom: 4px">
+        <div style="flex: 1; display: flex"><div style="width: 35%">Report Date/Time</div> :<div style="margin-left: 8px"><strong>
+          ${currentReport?.created_at ? moment(currentReport?.created_at).format("DD/MM/YYYY HH:mm:ss") : '-'}
+          </strong></div></div>
+        <div style="flex: 1; display: flex"><div style="width: 35%">Reg Type</div> :<div style="margin-left: 8px"><strong>OPD</strong></div></div>
+      </div>
+    </div>`
+  )
+}

@@ -118,10 +118,14 @@ server.listen({ port, host: '0.0.0.0' }, async (err, address) => {
 function authenticateRoutes(req, res, next) {
   const bearerToken = req.headers["authorization"];
   const token = bearerToken?.split(" ")[1];
-  if (req.url === '/' || req.url.includes('/rs') || req.url.includes('/login') || req.url.includes('/restart-server')) {
+
+  const authSkipPaths = ['/rs', '/login', '/restart-server', '/no-auth'];
+
+  if (req.url === '/' || authSkipPaths.some((path) => req.url.includes(path))) {
     next();
     return;
   }
+
   if (!token) {
     return res.status(401).send({ message: "Unauthorized" });
   }

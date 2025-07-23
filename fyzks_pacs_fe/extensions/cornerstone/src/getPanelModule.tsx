@@ -4,6 +4,8 @@ import { Toolbox } from '@ohif/extension-default';
 import PanelSegmentation from './panels/PanelSegmentation';
 import ActiveViewportWindowLevel from './components/ActiveViewportWindowLevel';
 import PanelMeasurement from './panels/PanelMeasurement';
+import MIPThicknessInput from './components/MIPsThicknessInput/MIPThicknessPanel';
+import MIPThicknessPanel from './components/MIPsThicknessInput/MIPThicknessPanel';
 
 const getPanelModule = ({ commandsManager, servicesManager, extensionManager }: withAppTypes) => {
   const wrappedPanelSegmentation = ({ configuration }) => {
@@ -53,6 +55,20 @@ const getPanelModule = ({ commandsManager, servicesManager, extensionManager }: 
     );
   };
 
+  const mipThicknessPanel = {
+    name: 'mip-thickness',
+    iconName: 'tool-stack-scroll',
+    iconLabel: 'MIP Thickness',
+    label: 'MIP Thickness',
+    component: (props) => (
+      <MIPThicknessPanel
+        servicesManager={servicesManager}
+        commandsManager={commandsManager}
+        {...props}
+      />
+    ),
+  }
+
   return [
     {
       name: 'activeViewportWindowLevel',
@@ -88,6 +104,7 @@ const getPanelModule = ({ commandsManager, servicesManager, extensionManager }: 
       label: 'Segmentation',
       component: wrappedPanelSegmentationWithTools,
     },
+    mipThicknessPanel,
   ];
 };
 

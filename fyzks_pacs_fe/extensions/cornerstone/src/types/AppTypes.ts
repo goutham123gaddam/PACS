@@ -15,6 +15,7 @@ import type {
   SegmentationInfo as SegInfo,
 } from '../services/SegmentationService/SegmentationService';
 import type { ViewportOptions as ViewportOpts } from '../services/ViewportService/Viewport';
+import { FavoritesService } from 'platform/core/src/services';
 declare global {
   namespace AppTypes {
     export type CornerstoneCacheService = CornerstoneCacheServiceType;
@@ -31,6 +32,7 @@ declare global {
       segmentationService?: SegmentationServiceType;
       cornerstoneCacheService?: CornerstoneCacheServiceType;
       colorbarService?: ColorbarServiceType;
+      favoritesService?: FavoritesService
     }
 
     export namespace Segmentation {

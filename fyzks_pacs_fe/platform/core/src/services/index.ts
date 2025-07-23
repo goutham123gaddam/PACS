@@ -17,6 +17,7 @@ import CustomizationService from './CustomizationService';
 import PanelService from './PanelService';
 import WorkflowStepsService from './WorkflowStepsService';
 import StudyPrefetcherService from './StudyPrefetcherService';
+import FavoritesService from './FavoriteService';
 import { MultiMonitorService } from './MultiMonitorService';
 
 import type Services from '../types/Services';
@@ -44,4 +45,5 @@ export {
   PanelService,
   WorkflowStepsService,
   StudyPrefetcherService,
+  FavoritesService
 };

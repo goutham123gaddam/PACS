@@ -177,6 +177,14 @@ export default class ToolbarService extends PubSubService {
     });
   }
 
+  public getCurrentFavorites = () => {
+    const { favoritesService } = this._servicesManager.services;
+    if (favoritesService) {
+      return favoritesService.getFavoriteTools();
+    }
+    return [];
+  };
+
   /**
    * Adds buttons to the toolbar.
    * @param buttons - The buttons to be added.
@@ -302,12 +310,16 @@ export default class ToolbarService extends PubSubService {
           typeof props.evaluate === 'function'
             ? props.evaluate({ ...refreshProps, button })
             : undefined;
+
+        const currentFavorites = this.getCurrentFavorites();
+        const isFavorite = currentFavorites.includes(button.id);
         const updatedProps = {
           ...props,
           ...evaluated,
           disabled: evaluated?.disabled || false,
           visible: evaluateProps?.hideWhenDisabled && evaluated?.disabled ? false : true,
-          className: evaluated?.className || '',
+          // className: 'tempClass', //evaluated?.className || '',
+          className: `${evaluated?.className} ${isFavorite ? 'fav-btn' : ''}`,
           isActive: evaluated?.isActive, // isActive will be undefined for buttons without this prop
         };
         evaluationResults.set(button.id, updatedProps);

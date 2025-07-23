@@ -133,3 +133,28 @@ body {
 .whitespace-normal {
   white-space: normal;
 }
+
+.fav-btn, .favorite-tool {
+  /* border-left: 4px solid orange; */
+  border: 2px solid #f4efe763;
+  position: relative;
+  margin-right: 4px;
+}
+
+.fav-btn::after, .favorite-tool::after {
+  content: "★";
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  /* background: #ff6b6b; */
+  color: #ecc72b;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}

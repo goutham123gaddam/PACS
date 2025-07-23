@@ -20,6 +20,18 @@ export const setToolActiveToolbar = {
 };
 
 const toolbarButtons: Button[] = [
+  {
+    id: 'SeparatorTool',
+    uiType: 'ohif.toolButton',
+    props: {
+      icon: 'tool-separator',
+      label: '',
+      tooltip: '',
+      disabled: true,
+      commands: setToolActiveToolbar,
+      evaluate: 'evaluate.cornerstoneTool',
+    },
+  },
   // sections
   {
     id: 'MeasurementTools',

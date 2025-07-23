@@ -5,13 +5,15 @@ import { ClockCircleOutlined, UserOutlined, DatabaseOutlined, BugOutlined } from
 import { makeGetCall } from "../../utils/helper";
 
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 const StatsDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState([]);
     const [anomalyCount, setAnomalyCount] = useState(0);
-    const [selectedModality, setSelectedModality] = useState(null);
-    const [createdAfter, setCreatedAfter] = useState(null);
+    const [selectedModality, setSelectedModality] = useState('DX'); // Default to DX (X-Ray)
+    const [dateRange, setDateRange] = useState(null);
+    const [allModalities, setAllModalities] = useState([]);
 
     // Fetch data from API with filters
     const fetchData = () => {
@@ -19,7 +21,10 @@ const StatsDashboard = () => {
         
         const params = new URLSearchParams();
         if (selectedModality) params.append('modality', selectedModality);
-        if (createdAfter) params.append('created_after', createdAfter.toISOString());
+        if (dateRange && dateRange.length === 2) {
+            params.append('created_after', dateRange[0].toISOString());
+            params.append('created_before', dateRange[1].toISOString());
+        }
 
         const endpoint = params.toString() ? `/no-auth/get-loading-times?${params.toString()}` : '/no-auth/get-loading-times';
 
@@ -60,26 +65,26 @@ const StatsDashboard = () => {
     // Refetch when filters change
     useEffect(() => {
         fetchData();
-    }, [selectedModality, createdAfter]);
+    }, [selectedModality, dateRange]);
 
     // Get unique modalities for filter options
-    const [allModalities, setAllModalities] = useState([]);
-    
     useEffect(() => {
         // Fetch all available modalities for filter dropdown
         makeGetCall('/no-auth/get-loading-times')
             .then(res => {
                 // Filter out null/empty modalities, anomalies > 150s, and get unique values
-                const modalities = [...new Set(
-                    (res.data?.data || [])
-                        .filter(item => 
-                            item.vs_modality && 
-                            item.vs_modality.trim() !== '' &&
-                            item.vs_time_taken <= 40000  // 40 seconds = 40,000 ms
-                        )
-                        .map(item => item.vs_modality)
-                )];
-                setAllModalities(modalities);
+                const uniqueModalities = [...new Set(
+                    res.data?.data
+                        ?.filter(item => item.vs_modality && item.vs_modality.trim() !== '' && item.vs_time_taken <= 150000)
+                        ?.map(item => item.vs_modality?.trim())
+                        ?.sort()
+                )] || [];
+                setAllModalities(uniqueModalities);
+                
+                // Ensure DX is set as default if it exists in the data
+                if (uniqueModalities.includes('DX') && !selectedModality) {
+                    setSelectedModality('DX');
+                }
             })
             .catch(e => {
                 console.log(e);
@@ -88,118 +93,103 @@ const StatsDashboard = () => {
     }, []);
 
     // Calculate statistics
-    const calculateStats = () => {
-        if (data.length === 0) return { avgLoadTime: 0, maxLoadTime: 0, minLoadTime: 0, totalRecords: 0 };
-        
-        const times = data.map(item => item.vs_time_taken);
-        return {
-            avgLoadTime: Math.round(times.reduce((sum, time) => sum + time, 0) / times.length),
-            maxLoadTime: Math.max(...times),
-            minLoadTime: Math.min(...times),
-            totalRecords: data.length
-        };
-    };
+    const times = data.map(item => item.vs_time_taken);
+    const totalRecords = data.length;
+    const avgLoadTime = times.length > 0 ? Math.round(times.reduce((sum, time) => sum + time, 0) / times.length) : 0;
+    const maxLoadTime = times.length > 0 ? Math.max(...times) : 0;
+    const minLoadTime = times.length > 0 ? Math.min(...times) : 0;
 
-    const { avgLoadTime, maxLoadTime, minLoadTime, totalRecords } = calculateStats();
-
-    // Prepare count vs time bar chart data for each modality
-    const prepareCountVsTimeData = () => {
-        const modalities = [...new Set(data.map(item => item.vs_modality).filter(Boolean))];
-        const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+    // Calculate performance badge
+    const getPerformanceBadge = () => {
+        if (totalRecords === 0) return null;
         
-        if (data.length === 0) {
-            return { buckets: [], modalities, colors, maxCount: 1 };
-        }
+        // Determine threshold based on exact modality values
+        const threshold = selectedModality === 'DX' ? 2000 : 10000; // 2s for DX (X-Ray), 10s for CT/MRI
         
-        // Calculate dynamic bucket size based on data range (max 40s)
-        const maxTime = Math.max(...data.map(item => item.vs_time_taken));
-        const maxTimeInSeconds = Math.min(maxTime / 1000, 40); // Cap at 40 seconds
+        const recordsAboveThreshold = data.filter(item => item.vs_time_taken > threshold).length;
+        const percentageAboveThreshold = (recordsAboveThreshold / totalRecords) * 100;
         
-        let bucketSize, bucketCount;
-        
-        // Dynamic bucket sizing logic for 0-40s range
-        if (maxTimeInSeconds <= 5) {
-            bucketSize = 0.5;  // 0.5s buckets for 0-5s
-        } else if (maxTimeInSeconds <= 10) {
-            bucketSize = 1;    // 1s buckets for 5-10s
-        } else if (maxTimeInSeconds <= 20) {
-            bucketSize = 2;    // 2s buckets for 10-20s
+        if (percentageAboveThreshold < 10) {
+            return (
+                <span 
+                    style={{ 
+                        backgroundColor: '#52c41a', 
+                        color: 'white', 
+                        padding: '4px 8px', 
+                        borderRadius: '4px', 
+                        fontSize: '12px',
+                        marginLeft: '8px',
+                        fontWeight: '500'
+                    }}
+                >
+                    Good Performance ({percentageAboveThreshold.toFixed(1)}% above threshold)
+                </span>
+            );
         } else {
-            bucketSize = 5;    // 5s buckets for 20-40s
+            return (
+                <span 
+                    style={{ 
+                        backgroundColor: '#fa8c16', 
+                        color: 'white', 
+                        padding: '4px 8px', 
+                        borderRadius: '4px', 
+                        fontSize: '12px',
+                        marginLeft: '8px',
+                        fontWeight: '500'
+                    }}
+                >
+                    Poor Performance ({percentageAboveThreshold.toFixed(1)}% above threshold)
+                </span>
+            );
         }
-        
-        // Ensure we have a reasonable number of buckets (max 25)
-        bucketCount = Math.ceil(maxTimeInSeconds / bucketSize);
-        if (bucketCount > 25) {
-            bucketSize = Math.ceil(maxTimeInSeconds / 25);
-            bucketCount = Math.ceil(maxTimeInSeconds / bucketSize);
-        }
-        
-        const buckets = [];
-        let maxCount = 0;
-        
-        // Create dynamic buckets
-        for (let i = 0; i < bucketCount; i++) {
-            const bucketStart = i * bucketSize;
-            const bucketEnd = (i + 1) * bucketSize;
-            
-            // Format label based on bucket size
-            let bucketLabel;
-            if (bucketSize < 1) {
-                bucketLabel = `${bucketStart}s - ${bucketEnd}s`;
-            } else if (bucketSize < 60) {
-                bucketLabel = `${Math.round(bucketStart)}s - ${Math.round(bucketEnd)}s`;
-            } else {
-                const startMin = Math.floor(bucketStart / 60);
-                const startSec = Math.round(bucketStart % 60);
-                const endMin = Math.floor(bucketEnd / 60);
-                const endSec = Math.round(bucketEnd % 60);
-                bucketLabel = `${startMin}:${startSec.toString().padStart(2, '0')} - ${endMin}:${endSec.toString().padStart(2, '0')}`;
-            }
-            
-            const bucketData = { 
-                timeRange: bucketLabel, 
-                bucketStart, 
-                bucketEnd,
-                bucketSize,
-                isAfter2Seconds: bucketStart >= 2.0
-            };
-            
-            let bucketTotal = 0;
-            // Count records for each modality in this time bucket
-            modalities.forEach(modality => {
-                const count = data.filter(item => {
-                    const timeInSeconds = item.vs_time_taken / 1000;
-                    return item.vs_modality === modality && 
-                           timeInSeconds >= bucketStart && 
-                           timeInSeconds < bucketEnd;
-                }).length;
-                
-                bucketData[modality] = count;
-                bucketTotal += count;
-            });
-            
-            maxCount = Math.max(maxCount, bucketTotal);
-            buckets.push(bucketData);
-        }
-        
-        return { buckets, modalities, colors, maxCount: maxCount + 1, bucketSize };
     };
 
-    // Prepare chart data for modality analysis
+    // Prepare data for count vs time chart
+    const prepareCountVsTimeData = () => {
+        const bucketSize = 1; // 1 second buckets
+        const maxTime = Math.min(Math.max(...times, 0), 40); // Cap at 40 seconds
+        const buckets = [];
+
+        for (let i = 0; i <= maxTime; i += bucketSize) {
+            const startTime = i * 1000; // Convert to milliseconds
+            const endTime = (i + bucketSize) * 1000;
+            const count = data.filter(item => 
+                item.vs_time_taken >= startTime && 
+                item.vs_time_taken < endTime
+            ).length;
+
+            buckets.push({
+                timeRange: `${i}s`,
+                count,
+                startTime,
+                endTime
+            });
+        }
+
+        return { buckets, bucketSize };
+    };
+
+    // Prepare data for modality chart
     const prepareModalityChartData = () => {
-        const modalities = [...new Set(data.map(item => item.vs_modality).filter(Boolean))];
+        const modalityMap = {};
         
-        const modalityData = modalities.map(modality => {
-            const modalityRecords = data.filter(item => item.vs_modality === modality);
-            const times = modalityRecords.map(item => item.vs_time_taken);
-            
+        data.forEach(item => {
+            const modality = item.vs_modality?.trim();
+            if (!modalityMap[modality]) {
+                modalityMap[modality] = [];
+            }
+            modalityMap[modality].push(item.vs_time_taken);
+        });
+
+        const modalityData = Object.keys(modalityMap).map(modality => {
+            const times = modalityMap[modality];
             return {
                 modality,
-                avgTime: times.length > 0 ? Math.round(times.reduce((sum, time) => sum + time, 0) / times.length) : 0,
+                avgTime: times.length > 0 ? 
+                    Math.round(times.reduce((sum, time) => sum + time, 0) / times.length) : 0,
                 maxTime: times.length > 0 ? Math.max(...times) : 0,
                 minTime: times.length > 0 ? Math.min(...times) : 0,
-                count: modalityRecords.length
+                count: modalityMap[modality].length
             };
         });
 
@@ -214,6 +204,11 @@ const StatsDashboard = () => {
     const countVsTimeData = prepareCountVsTimeData();
     const { modalityData, pieData } = prepareModalityChartData();
     const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+
+    // Determine red line position based on modality
+    const getRedLinePosition = () => {
+        return selectedModality === 'DX' ? 2 : 10; // 2s for DX (X-Ray), 10s for CT/MRI
+    };
 
     // Table columns
     const columns = [
@@ -273,7 +268,7 @@ const StatsDashboard = () => {
             {/* Filters */}
             <Card style={{ marginBottom: '20px' }}>
                 <Row gutter={16}>
-                    <Col span={8}>
+                    <Col span={6}>
                         <Select
                             placeholder="Select Modality"
                             style={{ width: '100%' }}
@@ -286,24 +281,25 @@ const StatsDashboard = () => {
                             ))}
                         </Select>
                     </Col>
-                    <Col span={8}>
-                        <DatePicker
-                            placeholder="Created After"
+                    <Col span={6}>
+                        <RangePicker
+                            placeholder={['Start Date', 'End Date']}
                             style={{ width: '100%' }}
-                            value={createdAfter}
-                            onChange={setCreatedAfter}
+                            value={dateRange}
+                            onChange={setDateRange}
                             showTime
                         />
                     </Col>
-                    <Col span={8}>
-                        <span>
-                            Total Records: {totalRecords}
+                    <Col span={12}>
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                            <span>Total Records: {totalRecords}</span>
+                            {getPerformanceBadge()}
                             {anomalyCount > 0 && (
-                                <span style={{ color: '#ff4d4f', fontSize: '12px', marginLeft: '8px' }}>
+                                <span style={{ color: '#ff4d4f', fontSize: '12px' }}>
                                     ({anomalyCount} anomalies >40s excluded)
                                 </span>
                             )}
-                        </span>
+                        </div>
                     </Col>
                 </Row>
             </Card>
@@ -366,62 +362,31 @@ const StatsDashboard = () => {
                                     textAnchor="end"
                                     height={80}
                                     interval={0}
-                                    fontSize={12}
                                 />
-                                <YAxis 
-                                    label={{ value: 'Count of Records', angle: -90, position: 'insideLeft' }}
-                                    domain={[0, countVsTimeData.maxCount]}
-                                />
+                                <YAxis />
                                 <Tooltip 
-                                    content={({ active, payload, label }) => {
-                                        if (active && payload && payload.length) {
-                                            return (
-                                                <div style={{ 
-                                                    backgroundColor: '#fff', 
-                                                    padding: '10px', 
-                                                    border: '1px solid #ccc',
-                                                    borderRadius: '4px'
-                                                }}>
-                                                    <p><strong>Time Range:</strong> {label}</p>
-                                                    {payload.map((entry, index) => (
-                                                        <p key={index} style={{ color: entry.color }}>
-                                                            <strong>{entry.dataKey}:</strong> {entry.value} records
-                                                        </p>
-                                                    ))}
-                                                </div>
-                                            );
-                                        }
-                                        return null;
+                                    formatter={(value, name) => [value, 'Count']}
+                                    labelFormatter={(label) => `Time: ${label}`}
+                                />
+                                <Bar dataKey="count" fill="#8884d8" />
+                                <ReferenceLine 
+                                    x={`${getRedLinePosition()}s`} 
+                                    stroke="red" 
+                                    strokeWidth={2}
+                                    strokeDasharray="5 5"
+                                    label={{ 
+                                        value: `${getRedLinePosition()}s threshold`, 
+                                        position: 'top',
+                                        offset: 10
                                     }}
                                 />
-                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                
-                                {/* Dynamic reference line at 2 seconds */}
-                                {countVsTimeData.bucketSize <= 5 && (
-                                    <ReferenceLine 
-                                        x={countVsTimeData.buckets.find(b => b.bucketStart >= 2.0)?.timeRange || "2s - 4s"} 
-                                        stroke="#ff4d4f" 
-                                        strokeWidth={3}
-                                        strokeDasharray="6 6"
-                                    />
-                                )}
-                                
-                                {countVsTimeData.modalities.map((modality, index) => (
-                                    <Bar
-                                        key={modality}
-                                        dataKey={modality}
-                                        stackId="modality"
-                                        fill={countVsTimeData.colors[index % countVsTimeData.colors.length]}
-                                        name={modality}
-                                    />
-                                ))}
                             </BarChart>
                         </ResponsiveContainer>
                     </Card>
                 </Col>
             </Row>
 
-            {/* Charts */}
+            {/* Modality Charts */}
             <Row gutter={16} style={{ marginBottom: '20px' }}>
                 <Col span={16}>
                     <Card title="Average Load Time by Modality">
@@ -430,10 +395,10 @@ const StatsDashboard = () => {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="modality" />
                                 <YAxis />
-                                <Tooltip formatter={(value) => [`${value}ms`, 'Time']} />
+                                <Tooltip />
                                 <Legend />
-                                <Bar dataKey="avgTime" fill="#0088FE" name="Average Time (ms)" />
-                                <Bar dataKey="maxTime" fill="#FF8042" name="Max Time (ms)" />
+                                <Bar dataKey="avgTime" fill="#8884d8" name="Avg Time (ms)" />
+                                <Bar dataKey="maxTime" fill="#82ca9d" name="Max Time (ms)" />
                                 <Bar dataKey="minTime" fill="#00C49F" name="Min Time (ms)" />
                             </BarChart>
                         </ResponsiveContainer>

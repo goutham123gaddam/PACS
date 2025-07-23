@@ -8,6 +8,7 @@ module.exports = function (context, options) {
             fs: false,
             path: false,
           },
+          fullySpecified: false
         },
         module: {
           rules: [

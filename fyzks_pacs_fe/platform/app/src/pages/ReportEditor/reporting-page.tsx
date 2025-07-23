@@ -5,6 +5,7 @@ import { createTabChannel, getUserDetails, makePostCall } from '../../utils/help
 import { Layout, List, Card, Typography, Spin, message } from 'antd';
 import moment from 'moment';
 import ReportEditor from '.';
+import { launchViewerOnDualMonitor, checkMonitorSetup } from '../../utils/MonitorManager';
 // import ReportEditor from './ReportEditor';  // Import the ReportEditor component
 
 const { Content, Sider } = Layout;
@@ -69,9 +70,9 @@ const ReportingPage = () => {
     }
   };
 
-  const launchViewerForStudy = async (order,) => {
-    window.open(`/viewer?StudyInstanceUIDs=${order?.ps_study_uid}`, '_blank')
-  }
+  const launchViewerForStudy = async (order: any): Promise<Window | null> => {
+    return await launchViewerOnDualMonitor(order?.ps_study_uid);
+  };
 
   const handleOrderSelect = async (order, isInitial, index) => {
     const response = await makePostCall('/study-report-details', { user_id: getUserDetails()?.username, order_id: order?.pacs_order?.pacs_ord_id });

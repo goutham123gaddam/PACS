@@ -111,8 +111,6 @@ function ToolbarLayoutSelectorWithServices({
   const handleSelectionChange = useCallback(
     (commandOptions, isPreset) => {
       const { numRows, numCols } = props;
-      console.log("hande selection change", commandOptions, props);
-
       if (isPreset) {
         // Advanced preset selection
         saveViewerInteractions(

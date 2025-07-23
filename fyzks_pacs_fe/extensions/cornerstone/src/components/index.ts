@@ -8,5 +8,7 @@ export * from './StudyMeasurementsActions';
 export * from './MeasurementsOrAdditionalFindings';
 export * from './WindowLevelActionMenu';
 export * from './ModalityLoadBadge';
+export { default as MIPThicknessInput } from './MIPsThicknessInput/MIPThicknessInput';
+export { default as MIPThicknessPanel } from './MIPsThicknessInput/MIPThicknessPanel';
 
 export { DicomUpload };
