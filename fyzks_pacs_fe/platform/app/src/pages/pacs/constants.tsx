@@ -1,6 +1,6 @@
 import { Tag, Button, Upload, Tooltip, Popconfirm } from "antd";
 import React from "react";
-import { CheckSquareOutlined, CloseSquareOutlined, ExportOutlined, EyeOutlined, FileOutlined, FileTextOutlined, InfoCircleOutlined, PrinterOutlined, UploadOutlined } from '@ant-design/icons';
+import { CheckSquareOutlined, CloseSquareOutlined, ExportOutlined, EyeOutlined, FileOutlined, FileTextOutlined, InfoCircleOutlined, PrinterOutlined, UploadOutlined, ShareAltOutlined} from '@ant-design/icons';
 import { calculateExactAge, ConvertStringToDate, getUserDetails } from "../../utils/helper";
 import moment from 'moment';
 import classNames from "classnames";
@@ -13,7 +13,7 @@ const statusColors = {
   'REVIEWED': 'blue',
 };
 
-export const orderColumns = ({ openViewer, showOrdDetails, openRadDesk, openReportEditor, role, addFile, viewNotes, printReport, viewReport, assignToSelfTechnician, toggleReporting, toggleConfirmation, toggleFeatures }) => {
+export const orderColumns = ({ openViewer, showOrdDetails, openRadDesk, openReportEditor, role, addFile, viewNotes, printReport, viewReport, assignToSelfTechnician, toggleReporting, toggleConfirmation, toggleFeatures, handleShareStudy }) => {
   const userDetails = getUserDetails();
 
   return ([
@@ -75,6 +75,7 @@ export const orderColumns = ({ openViewer, showOrdDetails, openRadDesk, openRepo
       title: "Patient Name",
       render: (text, record) => {
         const currentlyBlocked = record.order_workflow?.ow_reporting_blocked === true;
+        const studyUID = record?.ps_study_uid;
 
         return (
           <div>
@@ -85,20 +86,57 @@ export const orderColumns = ({ openViewer, showOrdDetails, openRadDesk, openRepo
                 if (!currentlyBlocked) {
                   openReportEditor(record);
                 }
-                // openViewer(record)
+                // openViewer(record);
               }}
             >
+              {/* Share Button - Only show icon, positioned first */}
+              {studyUID && (
+                <Tooltip title="Generate Shareable Study Link">
+                  <ShareAltOutlined 
+                    style={{ 
+                      color: '#1890ff', // Match the blue color
+                      cursor: 'pointer',
+                      marginRight: '4px' 
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleShareStudy(record);
+                    }}
+                  />
+                </Tooltip>
+              )}
+              
+              {/* Eye Icon - Open Viewer */}
               <Tooltip title="Open Only Viewer">
-                <EyeOutlined color="orange" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openViewer(record); }} />
+                <EyeOutlined 
+                  color="orange" 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    e.stopPropagation(); 
+                    openViewer(record); 
+                  }} 
+                />
               </Tooltip>
+
+              {/* Patient Name */}
               <Tooltip title={record.pacs_order?.patient?.pat_name}>
-                <span className="whitespace-normal">
+                <span className="whitespace-normal" style={{ marginLeft: '8px' }}>
                   {record.pacs_order?.patient?.pat_name}
                 </span>
               </Tooltip>
 
+              {/* Radiology Desk Icon */}
               <Tooltip title="Radiology Desk">
-                <ExportOutlined color="orange" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openRadDesk(record); }} />
+                <ExportOutlined 
+                  color="orange" 
+                  style={{ marginLeft: '8px' }}
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    e.stopPropagation(); 
+                    openRadDesk(record); 
+                  }} 
+                />
               </Tooltip>
             </Button>
           </div>

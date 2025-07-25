@@ -119,7 +119,15 @@ function authenticateRoutes(req, res, next) {
   const bearerToken = req.headers["authorization"];
   const token = bearerToken?.split(" ")[1];
 
-  const authSkipPaths = ['/rs', '/login', '/restart-server', '/no-auth'];
+  const authSkipPaths = [
+    '/rs',
+    '/login',
+    '/restart-server',
+    '/no-auth',
+    '/shared-report',
+    '/study-share',
+    '/api/public',
+  ];
 
   if (req.url === '/' || authSkipPaths.some((path) => req.url.includes(path))) {
     next();

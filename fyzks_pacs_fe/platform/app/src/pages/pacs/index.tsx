@@ -21,6 +21,7 @@ import { useForm } from 'antd/es/form/Form';
 import OrderInfoPopup from '../OrderInfo';
 import PdfViewer from '../../components/PdfViewer';
 import { launchViewerOnDualMonitor, checkMonitorSetup } from '../../utils/MonitorManager';
+import ShareStudyModal from '../../components/ShareStudyModal';
 
 
 const { RangePicker } = DatePicker;
@@ -60,6 +61,14 @@ const PacsList = () => {
   const isHOD = userDetails?.user_type === 'hod';
 
   const userType = userDetails?.user_type;
+
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [selectedStudyForShare, setSelectedStudyForShare] = useState(null);
+
+  const handleShareStudy = (record) => {
+    setSelectedStudyForShare(record);
+    setShareModalVisible(true);
+  };
 
   useEffect(() => {
     console.log("INSIDE ON INIT");
@@ -724,7 +733,7 @@ const PacsList = () => {
               {
                 openViewer: openViewer, openRadDesk, openReportEditor: openReport, role: userDetails?.user_type,
                 assignToSelfTechnician, toggleReporting, addFile, viewNotes, printReport, viewReport,
-                toggleConfirmation, toggleFeatures, showOrdDetails
+                toggleConfirmation, toggleFeatures, showOrdDetails, handleShareStudy 
               }
             )}
             pagination={{
@@ -924,6 +933,18 @@ const PacsList = () => {
           }
 
         </div>
+        {selectedStudyForShare && (
+          <ShareStudyModal
+            visible={shareModalVisible}
+            onCancel={() => {
+              setShareModalVisible(false);
+              setSelectedStudyForShare(null);
+            }}
+            studyUID={selectedStudyForShare?.ps_study_uid}
+            studyDescription={selectedStudyForShare?.pacs_order?.po_diag_desc}
+            patientName={selectedStudyForShare?.pacs_order?.patient?.pat_name}
+          />
+        )}
       </div >
     </Spin>
   )

@@ -32,6 +32,7 @@ const REPORTS = require("./reports")(sequelize, Sequelize);
 const REPORT_PRINTS = require("./report_prints")(sequelize, Sequelize);
 const ORDER_WORKFLOW = require("./order_workflow")(sequelize, Sequelize);
 const VIEWER_INTERACTIONS = require("./viewer_tool_interactions")(sequelize, Sequelize);
+const SHAREABLE_REPORTS = require('./shareable-reports')(sequelize, Sequelize);
 
 STUDIES.belongsTo(PACS_ORDERS, {
   foreignKey: 'ps_pacs_ord_id'
@@ -114,6 +115,26 @@ USERS.hasMany(REPORTS, {
   constraints: false
 });
 
+SHAREABLE_REPORTS.belongsTo(PACS_ORDERS, {
+  foreignKey: 'order_id',
+  targetKey: 'pacs_ord_id',
+});
+
+SHAREABLE_REPORTS.belongsTo(USERS, {
+  foreignKey: 'created_by',
+  targetKey: 'username',
+});
+
+PACS_ORDERS.hasMany(SHAREABLE_REPORTS, {
+  foreignKey: 'order_id',
+  sourceKey: 'pacs_ord_id',
+});
+
+USERS.hasMany(SHAREABLE_REPORTS, {
+  foreignKey: 'created_by',
+  sourceKey: 'username',
+});
+
 module.exports = {
   PATIENT_REPORTS,
   USERS,
@@ -147,5 +168,6 @@ module.exports = {
   REPORT_PRINTS,
   ORDER_WORKFLOW,
   PATIENTS,
-  VIEWER_INTERACTIONS
+  VIEWER_INTERACTIONS,
+  SHAREABLE_REPORTS,
 };

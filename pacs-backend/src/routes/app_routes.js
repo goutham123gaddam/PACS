@@ -45,7 +45,12 @@ const { getPatientOrders, getPacsList, updatePatientScanStatus, saveReport, getP
 const { getPacsStudiesList } = require('../controllers/pacs-controller.js');
 const { sendHL7Message } = require('../controllers/startup-controller.js');
 const { oruHelper } = require('../controllers/hl7-controller.js');
-
+const {
+  generateShareableLink,
+  handlePublicReportAccess,
+  generateShareableStudyLink,
+  handlePublicStudyAccess,
+} = require('../controllers/public-controller');
 
 module.exports = function routes(server, opts, done) {
 
@@ -272,6 +277,21 @@ module.exports = function routes(server, opts, done) {
 
   server.get('/get-status-list', async (req, res) => {
     return getStatusList(req, res);
+  });
+
+  server.post('/generate-shareable-link', generateShareableLink);
+  server.post('/generate-study-link', generateShareableStudyLink);
+
+  server.get('/shared-report/:token', handlePublicReportAccess);
+  server.get('/study-share/:token', handlePublicStudyAccess);
+  
+  server.get('/api/public/report-meta/:token', (req, res) => {
+    req.query.type = 'meta';
+    handlePublicReportAccess(req, res);
+  });
+  server.get('/api/public/report-pdf/:token', (req, res) => {
+    req.query.type = 'pdf';
+    handlePublicReportAccess(req, res);
   });
   
   done();
